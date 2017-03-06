@@ -1,0 +1,462 @@
+/*
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8952.dtsi"
+#include "msm8952-pinctrl.dtsi"
+/*#include "msm8952-camera-sensor-mtp.dtsi"*/
+/*#include "msm8952-camera-sensor-hiaaero.dtsi"*/
+#include "msm8952-touch-hima_aero.dtsi"
+#include "msm8952-nfc548-hima_aero.dtsi"
+#include "msm8952-shub-hima_aero.dtsi"
+/* htc audio ++ */
+#include "msm8952-aud-pmec2.dtsi"
+/* htc audio -- */
+
+&i2c_2 {
+	/* Parallel-charger configuration */
+	smb1351-charger@1d {
+		compatible = "qcom,smb1351-charger";
+		reg = <0x1d>;
+		qcom,parallel-en-pin-polarity = <1>;
+		qcom,parallel-charger;
+		qcom,float-voltage-mv = <4250>;
+		qcom,recharge-mv = <100>;
+	};
+};
+
+&i2c_5 { /* BLSP2 QUP1 */
+	nq@2b {
+		compatible = "qcom,nq-nci";
+		reg = <0x2b>;
+		qcom,nq-irq = <&msm_gpio 17 0x00>;
+		qcom,nq-ven = <&msm_gpio 16 0x00>;
+		qcom,nq-firm = <&pm8950_gpios 5 0x00>;
+		qcom,nq-clkreq = <&msm_gpio 129 0x00>;
+		interrupt-parent = <&msm_gpio>;
+		qcom,clk-src = "BBCLK2";
+		interrupts = <17 0>;
+		interrupt-names = "nfc_irq";
+		pinctrl-names = "nfc_active", "nfc_suspend";
+		pinctrl-0 = <&nfc_int_active &nfc_disable_active>;
+		pinctrl-1 = <&nfc_int_suspend &nfc_disable_suspend>;
+		clocks = <&clock_gcc clk_bb_clk2_pin>;
+		clock-names = "ref_clk";
+	};
+};
+
+&soc {
+	hall_ak8789 {
+		compatible = "hall_sensor,ak8789";
+		hall,att_used = <2>;
+		hall,att_gpio = <&msm_gpio 13 0>;
+		hall,att_gpio_s = <&msm_gpio 12 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&hall_pinctrl_active>;
+	};
+
+	// Fingerprint for TEE version
+	fp_fpc1155 {
+		compatible = "fpc,fpc1020";
+                interrupt-parent  = <&msm_gpio>;
+                interrupts        = <46 0x0>;
+                l22-supply = <&pm8950_l22>;
+                fpc_gpio_rst = <&msm_gpio 47 0>;
+                fpc_gpio_irq = <&msm_gpio 46 0>;
+                fpc,use_fpc2050   = <1>;
+                fpc,enable-on-boot;
+                /delete-property/ fpc,enable-wakeup;
+                // EV_MSC, MSC_SCAN 
+                fpc,event-type = <4>;
+                fpc,event-code = <4>;
+                pinctrl-names     = "fpc1020_reset_reset",
+                                   "fpc1020_reset_active",
+                                    "fpc1020_irq_active",
+                                    "fpc1020_spi_active",
+                                    "fpc1020_spi_suspend",
+                                    "fpc1020_cs_high";
+
+                pinctrl-0         = <&fpc1020_reset_reset>;
+                pinctrl-1         = <&fpc1020_reset_active>;
+                pinctrl-2         = <&fpc1020_irq_active>;
+                pinctrl-3         = <&fpc1020_spi_active>;
+                pinctrl-4         = <&fpc1020_spi_suspend>;
+                pinctrl-5         = <&fpc1020_cs_high>;
+	};
+
+	//Fingerprint for REE version
+/*
+	spi@78B5000 {
+		status = "ok";
+		fp_fpc1155-spi@0 {
+			compatible        = "fpc,fpc1020";
+			reg               = <0>; //CS ID
+			l22-supply 	  = <&pm8950_l22>;
+			fpc_gpio_irq      = <&msm_gpio 46 0>;   //Interrupt pin
+			fpc_gpio_reset    = <&msm_gpio 47 0>; //Reset pin
+			fpc_gpio_cs       = <&msm_gpio 2 0>; //spi CS 0
+			fpc,use_fpc2050   = <1>;
+			spi-max-frequency = <4800000>; //Max Frequency for Device
+			pinctrl-names     = "fpc1020_reset_reset",
+					    "fpc1020_reset_active";
+			pinctrl-0         = <&fpc1020_reset_reset>;
+			pinctrl-1         = <&fpc1020_reset_active>;
+                 };
+
+	};
+*/
+
+/* htc audio removed ++ */
+/* int_codec:
+	 sound {
+		compatible = "qcom,msm8952-audio-codec";
+		qcom,model = "msm8952-snd-card-mtp";
+		reg = <0xc051000 0x4>,
+		      <0xc051004 0x4>,
+		      <0xc055000 0x4>,
+		      <0xc052000 0x4>;
+		reg-names = "csr_gp_io_mux_mic_ctl",
+			    "csr_gp_io_mux_spkr_ctl",
+			    "csr_gp_io_lpaif_pri_pcm_pri_mode_muxsel",
+			    "csr_gp_io_mux_quin_ctl";
+
+		qcom,msm-ext-pa = "primary";
+		qcom,msm-mclk-freq = <9600000>;
+		qcom,msm-mbhc-hphl-swh = <0>;
+		qcom,msm-mbhc-gnd-swh = <0>;
+		qcom,msm-hs-micbias-type = "external";
+		qcom,msm-micbias1-ext-cap;
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"SPK_RX_BIAS", "MCLK",
+			"INT_LDO_H", "MCLK",
+			"MIC BIAS External", "Handset Mic",
+			"MIC BIAS External2", "Headset Mic",
+			"MIC BIAS External", "Secondary Mic",
+			"AMIC1", "MIC BIAS External",
+			"AMIC2", "MIC BIAS External2",
+			"AMIC3", "MIC BIAS External",
+			"WSA_SPK OUT", "VDD_WSA_SWITCH",
+			"SpkrMono WSA_IN", "WSA_SPK OUT";
+		qcom,msm-gpios =
+			"pri_i2s",
+			"us_eu_gpio";
+		qcom,pinctrl-names =
+			"all_off",
+			"pri_i2s_act",
+			"us_eu_gpio_act",
+			"pri_i2s_us_eu_gpio_act";
+		pinctrl-names =
+			"all_off",
+			"pri_i2s_act",
+			"us_eu_gpio_act",
+			"pri_i2s_us_eu_gpio_act";
+		pinctrl-0 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus &cross_conn_det_sus>;
+		pinctrl-1 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act &cross_conn_det_sus>;
+		pinctrl-2 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus &cross_conn_det_act>;
+		pinctrl-3 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act &cross_conn_det_act>;
+		qcom,cdc-us-euro-gpios = <&msm_gpio 63 0>;
+		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
+				<&loopback>, <&compress>, <&hostless>,
+				<&afe>, <&lsm>, <&routing>, <&lpa>,
+				<&voice_svc>;
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1", "msm-pcm-dsp.2",
+				"msm-voip-dsp", "msm-pcm-voice", "msm-pcm-loopback",
+				"msm-compress-dsp", "msm-pcm-hostless", "msm-pcm-afe",
+				"msm-lsm-client", "msm-pcm-routing", "msm-pcm-lpa",
+				"msm-voice-svc";
+		asoc-cpu = <&dai_pri_auxpcm>, <&dai_hdmi>,
+				<&dai_mi2s0>, <&dai_mi2s1>, <&dai_mi2s2>, <&dai_mi2s3>,
+				<&dai_mi2s5>, <&dai_mi2s6>,
+				<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
+				<&sb_3_rx>, <&sb_3_tx>, <&sb_4_rx>, <&sb_4_tx>,
+				<&bt_sco_rx>, <&bt_sco_tx>, <&int_fm_rx>, <&int_fm_tx>,
+				<&afe_pcm_rx>, <&afe_pcm_tx>, <&afe_proxy_rx>, <&afe_proxy_tx>,
+				<&incall_record_rx>, <&incall_record_tx>, <&incall_music_rx>,
+				<&incall_music_2_rx>;
+		asoc-cpu-names = "msm-dai-q6-auxpcm.1", "msm-dai-q6-hdmi.8",
+				"msm-dai-q6-mi2s.0", "msm-dai-q6-mi2s.1",
+				"msm-dai-q6-mi2s.2", "msm-dai-q6-mi2s.3",
+				"msm-dai-q6-mi2s.5", "msm-dai-q6-mi2s.6",
+				"msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385",
+				"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
+				"msm-dai-q6-dev.16390", "msm-dai-q6-dev.16391",
+				"msm-dai-q6-dev.16392", "msm-dai-q6-dev.16393",
+				"msm-dai-q6-dev.12288", "msm-dai-q6-dev.12289",
+				"msm-dai-q6-dev.12292", "msm-dai-q6-dev.12293",
+				"msm-dai-q6-dev.224", "msm-dai-q6-dev.225",
+				"msm-dai-q6-dev.241", "msm-dai-q6-dev.240",
+				"msm-dai-q6-dev.32771", "msm-dai-q6-dev.32772",
+				"msm-dai-q6-dev.32773", "msm-dai-q6-dev.32770";
+		asoc-codec = <&stub_codec>, <&pm8950_cajon_dig>;
+		asoc-codec-names = "msm-stub-codec.1", "cajon_codec";
+		asoc-wsa-codec-names = "wsa881x-i2c-codec.8-000f";
+		asoc-wsa-codec-prefixes = "SpkrMono";
+
+		msm-vdd-wsa-switch-supply = <&pm8950_l13>;
+		qcom,msm-vdd-wsa-switch-voltage = <3075000>;
+		qcom,msm-vdd-wsa-switch-current = <5000>;
+	};
+
+	i2c@7af8000 {
+		wsa881x-i2c-codec@e {
+			compatible = "qcom,wsa881x-i2c-codec";
+			reg = <0x0e>;
+			qcom,msm-gpios = "wsa_clk",
+					"wsa_reset",
+					"wsa_vi";
+			qcom,pinctrl-names = "all_off",
+					"wsa_clk",
+					"wsa_active",
+					"wsa_clk_active",
+					"wsa_vi",
+					"wsa_clk_vi",
+					"wsa_active_vi",
+					"wsa_all";
+			pinctrl-names = "all_off",
+					"wsa_clk",
+					"wsa_active",
+					"wsa_clk_active",
+					"wsa_vi",
+					"wsa_clk_vi",
+					"wsa_active_vi",
+					"wsa_all";
+			pinctrl-0 = <&wsa_clk_off &wsa_suspend &wsa_vi_sus>;
+			pinctrl-1 = <&wsa_clk_on &wsa_suspend &wsa_vi_sus>;
+			pinctrl-2 = <&wsa_clk_off &wsa_active &wsa_vi_sus>;
+			pinctrl-3 = <&wsa_clk_on &wsa_active &wsa_vi_sus>;
+			pinctrl-4 = <&wsa_clk_off &wsa_suspend &wsa_vi_act>;
+			pinctrl-5 = <&wsa_clk_on &wsa_suspend &wsa_vi_act>;
+			pinctrl-6 = <&wsa_clk_off &wsa_active &wsa_vi_act>;
+			pinctrl-7 = <&wsa_clk_on &wsa_active &wsa_vi_act>;
+		};
+		wsa881x-i2c-codec@44 {
+			compatible = "qcom,wsa881x-i2c-codec";
+			reg = <0x44>;
+		};
+		wsa881x-i2c-codec@f {
+			compatible = "qcom,wsa881x-i2c-codec";
+			reg = <0x0f>;
+			qcom,msm-gpios = "wsa_clk",
+					"wsa_reset",
+					"wsa_vi";
+			qcom,pinctrl-names = "all_off",
+					"wsa_clk",
+					"wsa_active",
+					"wsa_clk_active",
+					"wsa_vi",
+					"wsa_clk_vi",
+					"wsa_active_vi",
+					"wsa_all";
+			pinctrl-names = "all_off",
+					"wsa_clk",
+					"wsa_active",
+					"wsa_clk_active",
+					"wsa_vi",
+					"wsa_clk_vi",
+					"wsa_active_vi",
+					"wsa_all";
+			pinctrl-0 = <&wsa_clk_off &wsa_suspend &wsa_vi_sus>;
+			pinctrl-1 = <&wsa_clk_on &wsa_suspend &wsa_vi_sus>;
+			pinctrl-2 = <&wsa_clk_off &wsa_active &wsa_vi_sus>;
+			pinctrl-3 = <&wsa_clk_on &wsa_active &wsa_vi_sus>;
+			pinctrl-4 = <&wsa_clk_off &wsa_suspend &wsa_vi_act>;
+			pinctrl-5 = <&wsa_clk_on &wsa_suspend &wsa_vi_act>;
+			pinctrl-6 = <&wsa_clk_off &wsa_active &wsa_vi_act>;
+			pinctrl-7 = <&wsa_clk_on &wsa_active &wsa_vi_act>;
+		};
+		wsa881x-i2c-codec@45 {
+			compatible = "qcom,wsa881x-i2c-codec";
+			reg = <0x45>;
+		};
+	};
+};
+
+&pm8950_gpios {
+	gpio@c400 {
+		qcom,mode = <1>;
+		qcom,output-type = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;
+		qcom,out-strength = <3>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+*//* htc audio removed -- */
+};
+
+&blsp1_uart2 {
+	status = "ok";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart_console_sleep>;
+};
+
+/* htc_battery_porting +++ */
+/*
+/{
+	mtp_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <15>;
+		#include "batterydata-itech-3000mah-4200mv.dtsi"
+		#include "batterydata-itech-3000mah.dtsi"
+	};
+
+
+
+};
+
+&pmi8950_fg {
+	qcom,battery-data = <&mtp_batterydata>;
+};
+
+&pmi8950_charger {
+	qcom,battery-data = <&mtp_batterydata>;
+	qcom,chg-led-support;
+	qcom,chg-led-sw-controls;
+};
+*/
+/* htc_battery_porting --- */
+
+&spmi_bus {
+	qcom,pmi8950@3 {
+		qcom,leds@d300 {
+			compatible = "qcom,qpnp-flash-led";
+			status = "okay";
+			reg = <0xd300 0x100>;
+			pinctrl-names = "flash_led_enable","flash_led_disable";
+			pinctrl-0 = <&flash_led_enable>;
+			pinctrl-1 = <&flash_led_disable>;
+			qcom,follow-otst2-rb-disabled;
+		};
+	};
+};
+
+&sdhc_1 {
+	vdd-supply = <&pm8950_l8>;
+	qcom,vdd-always-on;
+	qcom,vdd-voltage-level = <2900000 2900000>;
+	qcom,vdd-current-level = <200 570000>;
+
+	vdd-io-supply = <&pm8950_l5>;
+	qcom,vdd-io-always-on;
+	qcom,vdd-io-lpm-sup;
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <200 325000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc1_clk_on &sdc1_cmd_on &sdc1_data_on &sdc1_rclk_on>;
+	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off &sdc1_rclk_off>;
+
+	qcom,nonremovable;
+
+	htc,slot-type = <0>;
+
+	status = "ok";
+};
+
+&sdhc_2 {
+	vdd-supply = <&pm8950_l11>;
+	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-current-level = <15000 400000>;
+
+	vdd-io-supply = <&pm8950_l12>;
+	qcom,vdd-io-voltage-level = <1800000 2950000>;
+	qcom,vdd-io-current-level = <200 22000>;
+
+	pinctrl-names = "active", "active_sdr104", "sleep";
+	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
+	pinctrl-1 = <&sdc2_clk_on_sdr104 &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
+	pinctrl-2 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_off>;
+
+	#address-cells = <0>;
+	interrupt-parent = <&sdhc_2>;
+	interrupts = <0 1 2>;
+	#interrupt-cells = <1>;
+	interrupt-map-mask = <0xffffffff>;
+	interrupt-map = <0 &intc 0 125 0
+			1 &intc 0 221 0
+			2 &msm_gpio 67 0>;
+	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
+	cd-gpios = <&msm_gpio 67 0x1>;
+
+	htc,slot-type = <1>;
+
+	status = "ok";
+};
+
+#include "dsi-panel-hiaaero.dtsi"
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+/*
+&dsi_truly_1080_vid {
+	qcom,mdss-dsi-pan-enable-dynamic-fps;
+	qcom,mdss-dsi-pan-fps-update = "dfps_immediate_porch_mode_vfp";
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&pmx_mdss {
+	qcom,num-grp-pins = <1>;
+	qcom,pins = <&gp 61>;
+};
+
+
+&pmx_mdss_te {
+	qcom,num-grp-pins = <1>;
+	qcom,pins = <&gp 24>;
+};
+*/
+
+&mdss_dsi0 {
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&lcm_te_active>;
+	pinctrl-1 = <&lcm_te_suspend>;
+	qcom,platform-reset-gpio = <&msm_gpio 61 0>;
+	qcom,platform-te-gpio = <&msm_gpio 24 0>;
+	htc,vdd1v8-gpio = <&msm_gpio 129 0>;
+	qcom,dsi-pref-prim-pan = <&dsi_truly_1080_vid>;
+};
+
+&labibb {
+	status = "ok";
+	qpnp,qpnp-labibb-mode = "lcd";
+};
+
+&ibb_regulator {
+	qcom,qpnp-ibb-discharge-resistor = <32>;
+};
+
+/* CoreSight */
+&tpiu {
+	pinctrl-names = "sdcard", "trace", "swduart",
+			"swdtrc", "jtag", "spmi";
+	/* NIDnT */
+	pinctrl-0 = <&qdsd_clk_sdcard &qdsd_cmd_sdcard
+		     &qdsd_data0_sdcard &qdsd_data1_sdcard
+		     &qdsd_data2_sdcard &qdsd_data3_sdcard>;
+	pinctrl-1 = <&qdsd_clk_trace &qdsd_cmd_trace
+		     &qdsd_data0_trace &qdsd_data1_trace
+		     &qdsd_data2_trace &qdsd_data3_trace>;
+	pinctrl-2 = <&qdsd_cmd_swduart &qdsd_data0_swduart
+		     &qdsd_data1_swduart &qdsd_data2_swduart
+		     &qdsd_data3_swduart>;
+	pinctrl-3 = <&qdsd_clk_swdtrc &qdsd_cmd_swdtrc
+		     &qdsd_data0_swdtrc &qdsd_data1_swdtrc
+		     &qdsd_data2_swdtrc &qdsd_data3_swdtrc>;
+	pinctrl-4 = <&qdsd_cmd_jtag &qdsd_data0_jtag
+		     &qdsd_data1_jtag &qdsd_data2_jtag
+		     &qdsd_data3_jtag>;
+	pinctrl-5 = <&qdsd_clk_spmi &qdsd_cmd_spmi
+		     &qdsd_data0_spmi &qdsd_data3_spmi>;
+};

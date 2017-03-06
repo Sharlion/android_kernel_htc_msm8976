@@ -1,0 +1,99 @@
+&shub_boot_sel {
+	qcom,pins = <&gp 16>;
+	qcom,num-grp-pins = <1>;
+	qcom,pin-func = <0>;
+};
+
+&shub_boot_sel_status {
+	drive-strength = <2>;
+	bias-disable;
+};
+
+&mcugpio_int {
+	qcom,pins = <&gp 45>, <&gp 44>;
+	qcom,num-grp-pins = <2>;
+	qcom,pin-func = <0>;
+};
+
+&mcu_init {
+	drive-strength = <2>;
+	bias-disable;
+	input-enable;
+};
+
+&cpu2mcu_int {
+	qcom,pins = <&gp 98>;
+	qcom,num-grp-pins = <1>;
+	qcom,pin-func = <0>;
+};
+
+&cpu2mcu_int_status {
+	drive-strength = <2>;
+	bias-disable;
+};
+
+&shub_rst {
+	qcom,pins = <&gp 99>;
+	qcom,num-grp-pins = <1>;
+	qcom,pin-func = <0>;
+};
+
+&shub_rst_status {
+	drive-strength = <2>;
+	bias-disable;
+};
+
+
+&i2c_4 {
+	htc_mcu@72 {
+			compatible = "htc_mcu";
+			reg = <0x72>;
+			vdd-supply = <&pm8950_l6>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <45 0x0>;
+			mcu,intr-gpio  = <&msm_gpio 45 0>;
+			mcu,gs_chip_layout = <1>;
+			mcu,acceleration_axes = <7>;
+			mcu,magnetic_axes = <7>;
+			mcu,gyro_axes = <7>;
+			mcu,Cpu_wake_mcu-gpio = <&msm_gpio 98 0>; 	// 21
+			mcu,Reset-gpio = <&msm_gpio 99 0>;		// 16
+			mcu,Chip_mode-gpio = <&msm_gpio 16 0>;  	// 44
+			mcu,mcu_status-gpio = <&msm_gpio 44 0>; 	// 91
+			mcu,als_steps = <12>;
+			mcu,als_levels = <11 33 55 293 553 3778 5151 9868 18516 18317 31565 65535>;
+			mcu,als_leveltolux = <0 7 13 40 108 575 1250 2100 3850 11500 13800 16560>;
+			mcu,als_goldl = <0x09>;
+			mcu,als_goldh = <0x0B>;
+			mcu,ps_thd_add = <0x32>;
+			mcu,ps_thd_fixed = <0x15>;
+			mcu,ps_info = <1>;
+			pinctrl-names = "mcu_gpio_init";
+			pinctrl-0 = <&shub_rst_status &mcu_init>;
+			touch_enable = <1>;
+			vibrate_ms = <50>;
+	};
+
+	htc_mcu_flash@39 {
+			compatible = "htc_mcu_flash";
+			reg = <0x39>;
+	};
+
+	htc_mcu_dload@02 {
+			compatible = "htc_mcu_dload";
+			reg = <0x02>;
+	};
+};
+
+&i2c_2 {
+	lp5521@32 {
+			compatible = "LP5521-LED";
+			reg = <0x32>;
+			lp5521,lp5521_en = <&msm_gpio 128 0x00>;
+			lp5521,tp_3v3_en = <&msm_gpio 130 0x00>;
+			lp5521,num_leds = <1>;
+			pinctrl-names = "lp5521_init";
+			pinctrl-0 = <&lp5521_init>;
+			lp5521,current_param = <75>;
+	};
+};

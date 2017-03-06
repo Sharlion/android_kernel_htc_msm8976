@@ -1,0 +1,190 @@
+/*
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8976-mtp.dtsi"
+#include "msm8976-htc-common.dtsi"
+#include "msm8976-touch-pmec2.dtsi"
+#include "msm8976-key-pmec2.dtsi"
+#include "msm8976-vibrator-pmec2.dtsi"
+#include "msm8976-hall-sensor-pmec2.dtsi"
+#include "msm8976-capsensor-pmec2.dtsi"
+#include "dsi-panel-pmec2.dtsi"
+#include "dsi-panel-pmec2-hx8396c2.dtsi"
+#include "msm8976-nfc548-htc_pmec2.dtsi"
+#include "msm8976-audio-pmec2.dtsi"
+#include "msm8976-shub-pmec2.dtsi"
+#include "msm8976-charger-pmec2.dtsi"
+/ {
+       model = "Qualcomm Technologies, Inc. MSM8976 MTP";
+       compatible = "qcom,msm8976-mtp", "qcom,msm8976", "qcom,mtp";
+};
+&soc {
+
+    htc,htc_nc_pins {
+        compatible = "htc,nc_pin";
+
+        pinctrl-names = "default";
+        pinctrl-0 = <&pmec2_nc_pins_in_pd>;
+    };
+
+    i2c_6: i2c@7af6000 { /* BLSP2 QUP2 */
+        status = "disabled";
+    };
+
+    i2c@7af7000 {
+        htc_laser@29 {
+            compatible = "htc_laser";
+            reg = <0x29>;
+            pinctrl-names = "laser_gpio_init";
+            pinctrl-0 = <&laser_pwdn &laser_int>;
+            laser,power-2v8 = <&msm_gpio 36 0>;
+            laser,pwdn-gpio = <&msm_gpio 25 0>;
+            laser,camio-1v8 = <&msm_gpio 142 0>;
+            interrupt-parent = <&msm_gpio>;
+            interrupts = <68 0x0>;
+            laser,intr-gpio = <&msm_gpio 68 0>;
+        };
+    };
+
+};
+&tlmm_pinmux {
+    pmec2_nc_pins_in_pd {
+        qcom,pins = <&gp 45>, <&gp 46>, <&gp 50>, <&gp 74>, <&gp 75>, <&gp 84>, <&gp 93>, <&gp 105>, <&gp 130>, <&gp 131>, <&gp 134>, <&gp 136>;
+        qcom,num-grp-pins = <12>;
+        qcom,pin-func = <0>;
+        label = "pmec2_nc_pins_in_pd";
+        pmec2_nc_pins_in_pd: pmec2_nc_pins_in_pd {
+            driver-strength = <2>;  /* 2 mA */
+            bias-pull-down;     /* PULL DOWN */
+            input-enable;
+        };
+    };
+};
+
+&pmi8950_charger {
+        qcom,iterm-ma = <50>;
+        qcom,float-voltage-mv = <4400>;
+        qcom,float-voltage-comp = <4250>;
+        qcom,fastchg-current-ma = <3000>;
+        qcom,iusb-max-ma = <500>;
+        qcom,charging-timeout-mins = <768>;
+        qcom,precharging-timeout-mins = <24>;
+        qcom,resume-delta-mv = <100>;
+
+        qcom,usbin-chgr-cfg = <5>;
+        qcom,usbin-vadc = <&pmi8950_vadc>;
+
+        qcom,vchg-adc-channel-id = <3>;
+        qcom,vchg_sns-vadc = <&pmi8950_vadc>;
+
+        qcom,r-hw-mb-impedance = <90>;
+        qcom,qc20-iusb-max-ma = <1600>;
+        qcom,qc30-iusb-max-ma = <2500>;
+        qcom,qc20-ibat-warm-limit-ma = <2000>;
+        qcom,qc30-ibat-warm-limit-ma = <2100>;
+        qcom,iusb-max-ma-5V-adapter = <2000>;
+        qcom,battery-data = <&pmec2_batterydata>;
+        qcom,aicl-rerun-period-s = <11>;
+
+        pinctrl-names = "pmec2_gpio_init";
+        pinctrl-0 = <&ovp_alarm_init>;
+
+        htc,eoc-ibat-thre-ma = <300>;
+        htc,adjust-fastchg-cur-thr-mv = <4100>;
+        htc,cv-fastchg-cur-ma = <2100>;
+        htc,otg-output-current-ma = <750>;
+        htc,wa-adjust-iusb-max-to-prevent-over-chg-from-1A-adaptor;
+	htc,support-5v-2a-dcp;
+};
+
+&pmi8950_fg {
+        qcom,resume-soc = <97>;
+        qcom,warm-bat-decidegc = <470>;
+        qcom,cool-bat-decidegc = <100>;
+        qcom,hot-bat-decidegc = <550>;
+        qcom,cold-bat-decidegc = <20>;
+        qcom,fg-iterm-ma = <300>;
+        qcom,thermal-coefficients = [97 85 62 49 5A 35];
+        qcom,ext-sense-type;
+        qcom,store-batt-data-soc-thre = <100>;
+        qcom,stored-batt-magic-num = <(-1)>;
+        qcom,stored-batt-soc = <(-1)>;
+        qcom,stored-batt-update-time = <(-1)>;
+        qcom,stored-batt-temperature = <271>;
+        qcom,stored-batt-temp-diff = <200>;
+        qcom,fg-chg-iterm-ma = <50>;
+        qcom,fg-cutoff-voltage-mv = <3400>;
+        qcom,stored-batt-total-level = <0>;
+        qcom,stored-batt-overheat-sec = <0>;
+        qcom,stored-batt-first-use = <0>;
+        qcom,stored-batt-checksum = <0>;
+
+        qcom,battery-data = <&pmec2_batterydata>;
+};
+
+/{
+        pmec2_batterydata: qcom,battery-data {
+                qcom,batt-id-range-pct = <15>;
+                #include "batterydata-pmec2-id1.dtsi"
+                #include "batterydata-pmec2-id2.dtsi"
+                #include "batterydata-pmec2-unknown.dtsi"
+        };
+};
+
+/*++ 2015/11/16, USB Team, PCN00001 ++*/
+&i2c_1 {
+		fusb302@44 {
+			compatible = "fairchild,fusb302";
+			reg = <0x44>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <107 0>;
+			fairchild,int_n = <&msm_gpio 107 0x00>;
+			fairchild,power-gpio = <&msm_gpio 102 0x00>;
+			fairchild,vconn-gpio = <&msm_gpio 1 0x00>;/*++ 2015/12/30, USB Team, PCN00006 ++*/
+			pinctrl-names = "default";
+			/*pinctrl-0 = <&int_n_pin>;*/
+			pinctrl-0 = <&fusbc_int_default &fusbc_vconn_default>;
+		};
+};
+/*-- 2015/11/16, USB Team, PCN00001 --*/
+
+&spmi_bus {
+	qcom,pmi8950@2 {
+		mpps {
+			mpp@a000 {
+				qcom,mode = <0>;
+				qcom,vin-sel = <0>;
+				qcom,src-sel = <0>;
+				qcom,master-en = <0>;
+				qcom,pull = <3>;
+				status = "okay";
+			};
+			mpp@a300 {
+				qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
+				qcom,vin-sel = <2>;     /* QPNP_PIN_VIN2 */
+				qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT */
+				qcom,master-en = <0>;   /* Disable */
+				qcom,pull = <5>;	/* No PULL */
+				status = "okay";
+			};
+		};
+	};
+};
+
+&flash_led {
+	qcom,gpio-flash-strobe = <&msm_gpio 32 0x00>;
+};
+
+&pmi8950_flashlight {
+	qcom,max-current = <1000>;
+};

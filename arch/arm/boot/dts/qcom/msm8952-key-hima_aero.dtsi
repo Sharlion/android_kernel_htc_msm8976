@@ -1,0 +1,79 @@
+&soc
+{
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+		pinctrl-names = "tlmm_gpio_key_active","tlmm_gpio_key_suspend";
+		pinctrl-0 = <&gpio_key_active>;
+		pinctrl-1 = <&gpio_key_suspend>;
+
+		power_key {
+			label = "power_key";
+			gpios = <&msm_gpio 21 0x1>;
+			linux,input-type = <1>;
+			linux,code = <116>;
+			gpio-key,wakeup;
+			debounce-interval = <20>;
+		};
+
+		vol_up {
+			label = "volume_up";
+			gpios = <&msm_gpio 43 0x1>;
+			linux,input-type = <1>;
+			linux,code = <115>;
+			debounce-interval = <20>;
+		};
+
+		vol_down {
+			label = "volume_down";
+			gpios = <&msm_gpio 42 0x1>;
+			linux,input-type = <1>;
+			linux,code = <114>;
+			debounce-interval = <20>;
+		};
+	};
+
+	keycombo {
+		compatible = "keycombo";
+		pinctrl-names = "keycombo_active", "keycombo_normal";
+		pinctrl-0 = <&key_clrgpio_active>;
+		pinctrl-1 = <&key_clrgpio_normal>;
+
+		/* clear_hw_reset */
+		clr_gpio	= <&msm_gpio 20 0x1>;
+		key_down_delay	= <0>;		/* ms */
+		keys_down	= <116 0>;
+		/* cancel clear_hw_reset */
+		keys_up		= <115 0>;
+		/* for vzw */
+		vzw_keys_down	= <116 0>;
+		vzw_keys_up	= <114 0>;
+	};
+
+	keyreset {
+		compatible	= "keyreset";
+		key_down_delay = <9000>;
+		keys_down	= <116 115 0>;
+		/* for vzw */
+		vzw_keys_down	= <116 114 0>;
+	};
+
+	tlmm_pinmux: pinctrl@1000000 {
+		keycombo_clrgpio {
+			qcom,pins = <&gp 20>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "keycombo_clrgpio";
+			key_clrgpio_active: key_clrgpio_active {
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+			key_clrgpio_normal: key_clrgpio_normal {
+				drive-strength = <2>;
+				bias-pull-up;
+				input-enable;
+			};
+		};
+	};
+};

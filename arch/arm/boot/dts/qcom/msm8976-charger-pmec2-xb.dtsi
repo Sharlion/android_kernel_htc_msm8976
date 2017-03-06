@@ -1,0 +1,14 @@
+/* 8976 HTC Charger Config */
+
+// ================
+//  CHARGER DRIVER
+// ================
+
+&soc {
+	htc,htc-charger {
+		qcom,charger-ready-gpio = <&msm_gpio 135 0>;
+		pinctrl-0 = <&htc_chg_init &htc_chg_ready>;
+		iusb_rsen = <1400>;
+	};
+};
+

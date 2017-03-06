@@ -1,0 +1,19 @@
+
+&i2c_4 {
+        nxp_pn544_nfc@28 {
+                        compatible = "nxp,pn544-nfc";
+                        reg = <0x28>;
+                        interrupt-parent = <&msm_gpio>;
+                        interrupts = <9 0x4>;
+                        nxp,ven-gpio = <&msm_gpio 96 0x00>;
+                        nxp,irq-gpio = <&msm_gpio 9 0x00>;
+                        nxp,fwdl-gpio = <&msm_gpio 85 0x00>;
+                        nfc_i2c_sda = <&msm_gpio 14 0x00>;
+                        nfc_i2c_scl = <&msm_gpio 15 0x00>;
+                        nxp,ven_isinvert = <0>;
+                        nxp,isalive = <1>;
+                        pinctrl-names = "nfc_irq";
+                        pinctrl-0 = <&nfc_irq>;
+               };
+};
+

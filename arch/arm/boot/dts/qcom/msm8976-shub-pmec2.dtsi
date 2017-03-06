@@ -1,0 +1,123 @@
+&shub_boot_sel {
+	qcom,pins = <&gp 16>;
+	qcom,num-grp-pins = <1>;
+	qcom,pin-func = <0>;
+};
+
+&shub_boot_sel_status {
+	drive-strength = <2>;
+	bias-disable;
+};
+
+&mcugpio_int {
+	qcom,pins = <&gp 109>, <&gp 52>;
+	qcom,num-grp-pins = <2>;
+	qcom,pin-func = <0>;
+};
+
+&mcu_init {
+	drive-strength = <2>;
+	bias-disable;
+	input-enable;
+};
+
+&cpu2mcu_int {
+	qcom,pins = <&gp 38>;
+	qcom,num-grp-pins = <1>;
+	qcom,pin-func = <0>;
+};
+
+&cpu2mcu_int_status {
+	drive-strength = <2>;
+	bias-disable;
+};
+
+&shub_rst {
+	qcom,pins = <&gp 108>;
+	qcom,num-grp-pins = <1>;
+	qcom,pin-func = <0>;
+};
+
+&shub_rst_status {
+	drive-strength = <2>;
+	bias-disable;
+};
+
+
+&i2c_1 {
+	htc_mcu@72 {
+			compatible = "htc_mcu";
+			reg = <0x72>;
+			vdd-supply = <&pm8950_l6>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <45 0x0>;
+			mcu,intr-gpio  = <&msm_gpio 109 0>;
+			mcu,gs_chip_layout = <1>;
+			mcu,acceleration_axes = <7>;
+			mcu,magnetic_axes = <7>;
+			mcu,gyro_axes = <7>;
+			mcu,Cpu_wake_mcu-gpio = <&msm_gpio 38 0>;
+			mcu,Reset-gpio = <&msm_gpio 108 0>;
+			mcu,Chip_mode-gpio = <&msm_gpio 16 0>;
+			mcu,mcu_status-gpio = <&msm_gpio 52 0>;
+			mcu,SR_IO_1V8-gpio = <&msm_gpio 122 0>;
+			mcu,als_levels = <11 33 55 293 553 3778 5151 9868 18516 18317 31565 65535>;
+			mcu,als_leveltolux = <0 7 13 40 108 575 1250 2100 3850 11500 13800 16560>;
+			mcu,als_goldl = <0xFA>;
+			mcu,als_goldh = <0x03>;
+			mcu,als_polling = <1>;
+			mcu,als_lux_ratio_n = <85>;      /* Numerator */
+			mcu,als_lux_ratio_d = <100>;     /* Denominator */
+			mcu,ps_thd_add = <0x28>;
+			mcu,ps_thd_fixed = <0x15>;
+			mcu,ps_info = <1>;
+			pinctrl-names = "mcu_gpio_init";
+			pinctrl-0 = <&shub_rst_status &mcu_init>;
+			touch_enable = <1>;
+			vibrate_ms = <25>;
+	};
+
+	htc_mcu_flash@39 {
+			compatible = "htc_mcu_flash";
+			reg = <0x39>;
+	};
+
+	htc_mcu_dload@02 {
+			compatible = "htc_mcu_dload";
+			reg = <0x02>;
+	};
+
+	lp5562@30 {
+			compatible = "LP5562-LED";
+			reg = <0x30>;
+			lp5562,lp5562_en = <&msm_gpio 37 0x00>;
+			lp5562,tp_3v3_en = <&msm_gpio 102 0x00>;
+			lp5562,num_leds = <2>;
+			pinctrl-names = "lp5562_init";
+			pinctrl-0 = <&lp5521_init>;
+			lp5562,current_param = <75>;
+			lp5562,vk_current_param = <200>;
+			vk-pwm-array = [00 20 70 70 B0 B0 FF FF FF FF FF];
+			vk-black-cg-id-def = "DEF00", "GRY00", "LOB00", "BLK00";
+			vk-black-cg-id-sec = "LEB00";
+			vk-white-cg-id-def = "PNK00", "GOD00", "LOW00", "WHT00";
+			vk-white-cg-id-sec = "LEW00";
+			vk-black-pwm-array-def = [00 20 30 30 30 40 B0 FF FF FF FF FF];
+			vk-white-pwm-array-def = [00 20 40 40 40 B0 B0 FF FF FF FF FF];
+			vk-current-array-def =   [0A 0A 23 23 23 96 96 C8 C8 C8 C8 C8];
+			vk-black-pwm-array-sec = [00 10 20 20 20 30 40 60 60 60 60 60];
+			vk-white-pwm-array-sec = [00 20 40 40 40 E0 F0 FF FF FF FF FF];
+			vk-current-array-sec =   [0A 0A 23 23 23 64 96 C8 C8 C8 C8 C8];
+	};
+
+	lp5521@32 {
+			compatible = "LP5521-LED";
+			reg = <0x32>;
+			lp5521,lp5521_en = <&msm_gpio 37 0x00>;
+			lp5521,tp_3v3_en = <&msm_gpio 102 0x00>;
+			lp5521,num_leds = <1>;
+			pinctrl-names = "lp5521_init";
+			pinctrl-0 = <&lp5521_init>;
+			lp5521,current_param = <75>;
+	};
+};
