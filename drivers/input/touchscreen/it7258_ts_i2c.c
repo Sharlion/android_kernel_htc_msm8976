@@ -46,7 +46,10 @@
 	((x)[1] < (y)->data[(y)->size - 7]) || \
 	((x)[2] < (y)->data[(y)->size - 6]) || \
 	((x)[3] < (y)->data[(y)->size - 5]))
+<<<<<<< HEAD
+=======
 #define IT7260_COORDS_ARR_SIZE		4
+>>>>>>> qct_m_rel_es0
 
 /* all commands writes go to this idx */
 #define BUF_COMMAND			0x20
@@ -151,6 +154,8 @@ struct IT7260_ts_platform_data {
 	u16 palm_detect_keycode;
 	const char *fw_name;
 	const char *cfg_name;
+<<<<<<< HEAD
+=======
 	unsigned int panel_minx;
 	unsigned int panel_miny;
 	unsigned int panel_maxx;
@@ -160,6 +165,7 @@ struct IT7260_ts_platform_data {
 	unsigned int disp_maxx;
 	unsigned int disp_maxy;
 	unsigned num_of_fingers;
+>>>>>>> qct_m_rel_es0
 };
 
 struct IT7260_ts_data {
@@ -642,6 +648,8 @@ static ssize_t sysfs_cfg_upgrade_store(struct device *dev,
 		dev_err(dev, "Device is suspended, can't flash cfg!!!\n");
 		return -EBUSY;
 	}
+<<<<<<< HEAD
+=======
 
 	ret = sscanf(buf, "%d", &mode);
 	if (!ret) {
@@ -666,6 +674,80 @@ static ssize_t sysfs_cfg_upgrade_store(struct device *dev,
 	return count;
 }
 
+static ssize_t sysfs_fw_upgrade_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, MAX_BUFFER_SIZE, "%d\n",
+				gl_ts->fw_upgrade_result);
+}
+
+static ssize_t sysfs_cfg_upgrade_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, MAX_BUFFER_SIZE, "%d\n",
+				gl_ts->cfg_upgrade_result);
+}
+
+static ssize_t sysfs_force_fw_upgrade_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int mode = 0, ret;
+
+	if (gl_ts->suspended) {
+		dev_err(dev, "Device is suspended, can't flash fw!!!\n");
+		return -EBUSY;
+	}
+>>>>>>> qct_m_rel_es0
+
+	ret = sscanf(buf, "%d", &mode);
+	if (!ret) {
+		dev_err(dev, "failed to read input for sysfs\n");
+		return -EINVAL;
+	}
+
+	mutex_lock(&gl_ts->fw_cfg_mutex);
+	if (mode == 1) {
+		gl_ts->fw_cfg_uploading = true;
+<<<<<<< HEAD
+		ret = IT7260_cfg_upload(dev, false);
+		if (ret) {
+			dev_err(dev, "Failed to flash cfg: %d", ret);
+			gl_ts->cfg_upgrade_result = false;
+		} else {
+			gl_ts->cfg_upgrade_result = true;
+		}
+		gl_ts->fw_cfg_uploading = false;
+=======
+		ret = IT7260_fw_upload(dev, true);
+		if (ret) {
+			dev_err(dev, "Failed to force flash fw: %d", ret);
+			gl_ts->fw_upgrade_result = false;
+		} else {
+			gl_ts->fw_upgrade_result = true;
+		}
+		gl_ts->fw_cfg_uploading = false;
+	}
+	mutex_unlock(&gl_ts->fw_cfg_mutex);
+
+	return count;
+}
+
+static ssize_t sysfs_force_cfg_upgrade_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int mode = 0, ret;
+
+	if (gl_ts->suspended) {
+		dev_err(dev, "Device is suspended, can't flash cfg!!!\n");
+		return -EBUSY;
+>>>>>>> qct_m_rel_es0
+	}
+	mutex_unlock(&gl_ts->fw_cfg_mutex);
+
+	return count;
+}
+
+<<<<<<< HEAD
 static ssize_t sysfs_fw_upgrade_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -729,6 +811,14 @@ static ssize_t sysfs_force_cfg_upgrade_store(struct device *dev,
 		return -EINVAL;
 	}
 
+=======
+	ret = sscanf(buf, "%d", &mode);
+	if (!ret) {
+		dev_err(dev, "failed to read input for sysfs\n");
+		return -EINVAL;
+	}
+
+>>>>>>> qct_m_rel_es0
 	mutex_lock(&gl_ts->fw_cfg_mutex);
 	if (mode == 1) {
 		gl_ts->fw_cfg_uploading = true;
@@ -1377,6 +1467,44 @@ static int IT7260_ts_probe(struct i2c_client *client,
 		return pdata->irq_gpio;
 	}
 
+<<<<<<< HEAD
+	pdata->wakeup = of_property_read_bool(client->dev.of_node,
+						"ite,wakeup");
+	pdata->palm_detect_en = of_property_read_bool(client->dev.of_node,
+						"ite,palm-detect-en");
+	if (pdata->palm_detect_en) {
+		ret = of_property_read_u32(client->dev.of_node,
+					"ite,palm-detect-keycode", &temp_val);
+		if (!ret) {
+			pdata->palm_detect_keycode = temp_val;
+		} else {
+			dev_err(&client->dev,
+				"Unable to read palm-detect-keycode\n");
+			return ret;
+		}
+	}
+
+	ret = of_property_read_string(client->dev.of_node,
+				"ite,fw-name", &pdata->fw_name);
+	if (ret && (ret != -EINVAL)) {
+		dev_err(&client->dev, "Unable to read fw file name %d\n", ret);
+		return ret;
+	}
+
+	ret = of_property_read_string(client->dev.of_node,
+				"ite,cfg-name", &pdata->cfg_name);
+	if (ret && (ret != -EINVAL)) {
+		dev_err(&client->dev, "Unable to read cfg file name %d\n", ret);
+		return ret;
+	}
+
+	snprintf(gl_ts->fw_name, MAX_BUFFER_SIZE, "%s",
+		(pdata->fw_name != NULL) ? pdata->fw_name : FW_NAME);
+	snprintf(gl_ts->cfg_name, MAX_BUFFER_SIZE, "%s",
+		(pdata->cfg_name != NULL) ? pdata->cfg_name : CFG_NAME);
+
+=======
+>>>>>>> qct_m_rel_es0
 	if (!IT7260_chipIdentify()) {
 		dev_err(&client->dev, "Failed to identify chip!!!");
 		goto err_identification_fail;
@@ -1565,6 +1693,14 @@ static int fb_notifier_callback(struct notifier_block *self,
 #ifdef CONFIG_PM
 static int IT7260_ts_resume(struct device *dev)
 {
+<<<<<<< HEAD
+	if (!gl_ts->suspended) {
+		dev_info(dev, "Already in resume state\n");
+		return 0;
+	}
+
+=======
+>>>>>>> qct_m_rel_es0
 	if (device_may_wakeup(dev)) {
 		if (gl_ts->device_needs_wakeup) {
 			gl_ts->device_needs_wakeup = false;
@@ -1583,11 +1719,21 @@ static int IT7260_ts_suspend(struct device *dev)
 	if (gl_ts->fw_cfg_uploading) {
 		dev_dbg(dev, "Fw/cfg uploading. Can't go to suspend.\n");
 		return -EBUSY;
+<<<<<<< HEAD
+	}
+
+	if (gl_ts->suspended) {
+		dev_info(dev, "Already in suspend state\n");
+		return 0;
+	}
+
+=======
 	}
 
 	/* put the device in low power idle mode */
 	IT7260_ts_chipLowPowerMode(PWR_CTL_LOW_POWER_MODE);
 
+>>>>>>> qct_m_rel_es0
 	if (device_may_wakeup(dev)) {
 		if (!gl_ts->device_needs_wakeup) {
 			gl_ts->device_needs_wakeup = true;

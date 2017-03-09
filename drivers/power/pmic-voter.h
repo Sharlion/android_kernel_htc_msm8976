@@ -39,3 +39,8 @@ struct votable *create_votable(struct device *dev, const char *name,
 					);
 void lock_votable(struct votable *votable);
 void unlock_votable(struct votable  *votable);
+
+#ifdef CONFIG_HTC_BATT_8960
+int get_client_voter_state(struct votable *votable, int client_id);
+int get_client_voter_state_locked(struct votable *votable, int client_id);
+#endif

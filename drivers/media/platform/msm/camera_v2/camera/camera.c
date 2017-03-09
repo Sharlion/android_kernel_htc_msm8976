@@ -27,6 +27,9 @@
 #include <linux/iommu.h>
 #include <linux/platform_device.h>
 #include <media/v4l2-fh.h>
+#include <linux/of_fdt.h>
+#include <linux/libfdt_env.h>
+#include <linux/libfdt.h>
 
 #include "camera.h"
 #include "msm.h"
@@ -550,6 +553,29 @@ static void camera_v4l2_vb2_q_release(struct file *filep)
 	vb2_queue_release(&sp->vb2_q);
 }
 
+#define DT_ROOT_VALUE 0
+
+static void check_device_project(void)
+{
+	const char *machine_name;
+
+	if (initial_boot_params) {
+		machine_name = fdt_getprop(initial_boot_params, DT_ROOT_VALUE, "model", NULL);
+		if (machine_name) {
+			pr_info("MN: %s.\n", machine_name);
+			/*
+			if (!strncmp(machine_name, " XA", 3)) {
+				pr_info("MN: %s.\n", " XA");
+			} else if (!strncmp(machine_name, " XB", 3)) {
+			*/
+		}
+		else
+			pr_info("MN not found.\n");
+	}
+	else
+		pr_err("initial_boot_params is NULL\n");
+}
+
 static int camera_v4l2_open(struct file *filep)
 {
 	int rc = 0;
@@ -578,6 +604,7 @@ static int camera_v4l2_open(struct file *filep)
 	if (!atomic_read(&pvdev->opened)) {
 		pm_stay_awake(&pvdev->vdev->dev);
 
+		check_device_project();
 		/* Disable power collapse latency */
 		msm_pm_qos_update_request(CAMERA_DISABLE_PC_LATENCY);
 

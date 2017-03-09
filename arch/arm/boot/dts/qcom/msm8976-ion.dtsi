@@ -47,5 +47,12 @@
 			linux,contiguous-region = <&audio_mem>;
 			qcom,ion-heap-type = "DMA";
 		};
+		qcom,ion-heap@13 { /* FBMEM HEAP */
+			compatible = "qcom,msm-ion-reserve";
+			reg = <13>;
+			linux,contiguous-region = <&fb_mem>;
+			qcom,ion-heap-type = "DMA";
+		};
+
 	};
 };

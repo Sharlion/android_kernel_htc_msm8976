@@ -132,6 +132,9 @@ dtb-$(CONFIG_ARCH_MSM8916) += msm8916-sim.dtb \
 	msm8976-cdp.dtb \
 	msm8976-mtp.dtb \
 	msm8976-rcm.dtb \
+	msm8976-htc_pmec2-xa.dtb \
+	msm8976-htc_pmec2-xb.dtb \
+	msm8976-htc_pmec2-xc.dtb \
 	msm8976-internal-codec-cdp.dtb \
 	msm8976-polaris.dtb \
 	apq8076-cdp.dtb \

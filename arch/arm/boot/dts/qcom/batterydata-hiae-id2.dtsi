@@ -1,0 +1,66 @@
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,hiae-id2-batterydata {
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <2150>;
+	qcom,batt-id-kohm = <33>;
+	qcom,battery-beta = <4360>;
+	qcom,battery-type = "hiae_id2";
+	qcom,chg-rslow-comp-c1 = <2350844>;
+	qcom,chg-rslow-comp-c2 = <2091041>;
+	qcom,chg-rs-to-rslow = <2203834>;
+	qcom,chg-rslow-comp-thr = <0x99>;
+	qcom,checksum = <0xABE3>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.10";
+
+	qcom,v-cutoff-uv = <3400000>;
+	qcom,chg-term-ua = <100000>;
+	htc,batt_id = <2>;
+	htc,id_raw_min = <23001>;
+	htc,id_raw_max = <200000>;
+
+	qcom,fg-profile-data = [
+		6E 83 71 6E
+		CB 7A F4 74
+		4E 83 B7 62
+		2F 78 42 7D
+		2C 82 0D 98
+		94 B4 F1 BA
+		7D 16 0E 88
+		1D 7F 35 83
+		EE 7D 62 83
+		5D 6C 77 88
+		C3 8F 4B 82
+		77 98 05 B6
+		6C C1 58 19
+		AB 08 E5 58
+		14 70 B8 FE
+		8F 47 CC 44
+		19 48 00 00
+		1C 47 D7 38
+		3F 21 00 00
+		00 00 00 00
+		00 00 00 00
+		6E 78 E0 72
+		CB 69 22 80
+		47 6C 2C 55
+		A3 6A F4 78
+		52 5E 54 65
+		C3 8C 0E CA
+		0C 0C 68 C5
+		65 A0 71 0C
+		28 00 FF 36
+		F0 11 30 03
+		00 00 00 0C
+	];
+};

@@ -1,0 +1,117 @@
+/* PMEC2 Audio Config */
+
+&pmi8950_gpios {
+	gpio@c000 {
+		qcom,mode = <0>;	/* Digital input */
+		qcom,vin-sel = <0>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,pull = <0>;
+		status = "ok";
+	};
+};
+
+&soc {
+
+	i2c@7af8000 {
+		nxp_tfa9888_amp@34 {
+			compatible = "nxp,tfa9888-amp";
+			reg = <0x34>;
+		};
+	};
+	tlmm_pinmux: pinctrl@1000000 {
+		tfa9888_reset_gpio {
+			qcom,pins = <&gp 62>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "tfa9888-reset-gpio";
+			tfa9888_reset_gpio_active: tfa9888_reset_gpio_active {
+				bias-disable;
+				output-low;
+			};
+			tfa9888_reset_gpio_suspend: tfa9888_reset_gpio_suspend {
+				bias-disable;
+				output-low;
+			};
+		};
+		tfa9888-intr-gpio {
+			qcom,pins = <&gp 138>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "tfa9888-intr-gpio";
+		    tfa9888_intr_gpio_act: tfa9888_intr_gpio_act {
+				input-high;
+				bias-disable;
+			};
+
+		    tfa9888_intr_gpio_sus: tfa9888_intr_gpio_sus {
+				input-enable;
+				bias-disable;
+			};
+		};
+	};
+
+	sound-9335 {
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"AIF4 VI", "MCLK",
+			"AMIC1", "MIC BIAS1",
+			"MIC BIAS1", "Handset Mic",
+			"AMIC2", "MIC BIAS2",
+			"MIC BIAS2", "Headset Mic",
+			"AMIC3", "MIC BIAS3",
+			"MIC BIAS3", "Handset Mic",
+			"AMIC4", "MIC BIAS4",
+			"MIC BIAS4", "Handset Mic";
+		//MI2S pinctrl setting++
+		qcom,msm-gpios =
+			"quin_i2s",
+			"us_eu_gpio";
+		qcom,pinctrl-names =
+			"all_off",
+			"quin_i2s",
+			"us_eu_gpio_act",
+			"quin_us_eu_gpio_act";
+		pinctrl-names =
+			"all_off",
+			"quin_i2s",
+			"us_eu_gpio_act",
+			"quin_us_eu_gpio_act";
+		pinctrl-0 = <&pri_tlmm_lines_sus &cross_conn_det_sus &tfa9888_intr_gpio_sus>;
+		pinctrl-1 = <&pri_tlmm_lines_act &cross_conn_det_sus &tfa9888_intr_gpio_act>;
+		pinctrl-2 = <&pri_tlmm_lines_sus &cross_conn_det_act &tfa9888_intr_gpio_sus>;
+		pinctrl-3 = <&pri_tlmm_lines_act &cross_conn_det_act &tfa9888_intr_gpio_act>;
+		//MI2S pinctrl setting--
+		qcom,headset-jack-type-NO;
+		qcom,msm-mbhc-hphl-swh = <1>; /* HTC_AUD: 1 for NO, 0 for NC */
+		qcom,msm-mbhc-gnd-swh = <1>; /* HTC_AUD: 1 for NO, 0 for NC */
+		qcom,right-speaker-id-gpio = <&pmi8950_gpios 1 0>;
+		qcom,tfa9888-intr-gpio = <&msm_gpio 138 0>;
+		qcom,tfa9888-reset-gpio = <&msm_gpio 62 0>;
+
+//		htc,aud-component-list =
+//			"TFA9888";
+		mbhc-swap-detect = <0>;
+	};
+};
+
+&pm8950_gpios {
+	gpio@c000 { // PM8956_GPIO  01
+		status = "ok";
+		qcom,mode = <1>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <2>;
+		qcom,master-en = <1>;
+		qcom,out-strength = <2>;
+	};
+	gpio@c600 { // PM8956_GPIO  07
+		status = "ok";
+		qcom,mode = <1>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <0>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <1>;
+	};
+};
+

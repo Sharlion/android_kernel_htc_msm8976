@@ -189,24 +189,6 @@ void pil_q6v5_halt_axi_port(struct pil_desc *pil, void __iomem *halt_base)
 }
 EXPORT_SYMBOL(pil_q6v5_halt_axi_port);
 
-void assert_clamps(struct pil_desc *pil)
-{
-	u32 val;
-	struct q6v5_data *drv = container_of(pil, struct q6v5_data, desc);
-
-	/*
-	 * Assert QDSP6 I/O clamp, memory wordline clamp, and compiler memory
-	 * clamp as a software workaround to avoid high MX current during
-	 * LPASS/MSS restart.
-	 */
-	val = readl_relaxed(drv->reg_base + QDSP6SS_PWR_CTL);
-	val |= (Q6SS_CLAMP_IO | QDSP6v55_CLAMP_WL |
-			QDSP6v55_CLAMP_QMC_MEM);
-	writel_relaxed(val, drv->reg_base + QDSP6SS_PWR_CTL);
-	/* To make sure asserting clamps is done before MSS restart*/
-	mb();
-}
-
 static void __pil_q6v5_shutdown(struct pil_desc *pil)
 {
 	u32 val;
@@ -544,8 +526,6 @@ struct q6v5_data *pil_q6v5_init(struct platform_device *pdev)
 
 	drv->ahb_clk_vote = of_property_read_bool(pdev->dev.of_node,
 						"qcom,ahb-clk-vote");
-	drv->mx_spike_wa = of_property_read_bool(pdev->dev.of_node,
-						"qcom,mx-spike-wa");
 
 	drv->xo = devm_clk_get(&pdev->dev, "xo");
 	if (IS_ERR(drv->xo))
@@ -565,7 +545,7 @@ struct q6v5_data *pil_q6v5_init(struct platform_device *pdev)
 	prop = of_find_property(pdev->dev.of_node, "vdd_cx-voltage", NULL);
 	if (!prop) {
 		dev_err(&pdev->dev, "Missing vdd_cx-voltage property\n");
-		return ERR_CAST(prop);
+		return ERR_PTR(-EINVAL);
 	}
 
 	drv->vreg_pll = devm_regulator_get(&pdev->dev, "vdd_pll");

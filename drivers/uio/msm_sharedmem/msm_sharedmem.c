@@ -70,6 +70,10 @@ static int sharedmem_mmap(struct uio_info *info, struct vm_area_struct *vma)
 	return result;
 }
 
+#if defined(CONFIG_HTC_FEATURES_SMLOG_IN_RMTFS) 
+extern bool is_smlog_enabled(void);
+#endif 
+
 static int msm_sharedmem_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -82,7 +86,7 @@ static int msm_sharedmem_probe(struct platform_device *pdev)
 	bool is_addr_dynamic = false;
 	struct sharemem_qmi_entry qmi_entry;
 
-	/* Get the addresses from platform-data */
+	
 	if (!pdev->dev.of_node) {
 		pr_err("Node not found\n");
 		ret = -ENODEV;
@@ -113,6 +117,14 @@ static int msm_sharedmem_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	#if defined(CONFIG_HTC_FEATURES_SMLOG_IN_RMTFS) 
+	if (!strncmp(clnt_res->name, "rmtfs", 5) && is_smlog_enabled()){
+		
+		shared_mem_size = 0x1400000;
+		shared_mem_pyhsical = 0x82800000;	  
+	}
+	#endif 
+
 	if (shared_mem_pyhsical == 0) {
 		is_addr_dynamic = true;
 		shared_mem = dma_alloc_coherent(&pdev->dev, shared_mem_size,
@@ -124,8 +136,8 @@ static int msm_sharedmem_probe(struct platform_device *pdev)
 		}
 	}
 
-	/* Setup device */
-	info->mmap = sharedmem_mmap; /* Custom mmap function. */
+	
+	info->mmap = sharedmem_mmap; 
 	info->name = clnt_res->name;
 	info->version = "1.0";
 	info->mem[0].addr = shared_mem_pyhsical;

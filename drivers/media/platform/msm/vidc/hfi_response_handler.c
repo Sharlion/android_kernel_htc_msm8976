@@ -597,10 +597,6 @@ static int copy_caps_to_sessions(struct hfi_capability_supported *cap,
 	u32 sess_codec;
 	u32 sess_domain;
 
-	/*
-	 * iterate over num_sessions and copy all the capabilities
-	 * to matching sessions.
-	 */
 	for (i = 0; i < num_sessions; i++) {
 		sess_codec = 0;
 		sess_domain = 0;
@@ -633,10 +629,6 @@ static int copy_alloc_mode_to_sessions(
 	u32 sess_codec;
 	u32 sess_domain;
 
-	/*
-	 * iterate over num_sessions and copy all the entries
-	 * to matching sessions.
-	 */
 	for (i = 0; i < num_sessions; i++) {
 		sess_codec = 0;
 		sess_domain = 0;
@@ -1298,7 +1290,7 @@ static void hfi_process_session_ftb_done(msm_vidc_callback callback,
 			dprintk(VIDC_ERR,
 				"got buffer back with error %x\n",
 				pkt->error_type);
-			/* Proceed with the FBD */
+			
 		}
 
 		data_done.device_id = device_id;
@@ -1563,7 +1555,7 @@ static void hfi_process_sys_get_prop_image_version(
 	char version[256];
 	const u32 version_string_size = 128;
 	const u32 smem_image_index_venus = 14 * 128;
-	u8 *str_image_version;
+	u8 *str_image_version = NULL;
 	int req_bytes;
 
 	req_bytes = pkt->size - sizeof(*pkt);
@@ -1576,11 +1568,6 @@ static void hfi_process_sys_get_prop_image_version(
 		return;
 	}
 	str_image_version = (u8 *)&pkt->rg_property_data[1];
-	/*
-	 * The version string returned by firmware includes null
-	 * characters at the start and in between. Replace the null
-	 * characters with space, to print the version info.
-	 */
 	for (i = 0; i < version_string_size; i++) {
 		if (str_image_version[i] != '\0')
 			version[i] = str_image_version[i];
@@ -1595,7 +1582,7 @@ static void hfi_process_sys_get_prop_image_version(
 	if (smem_table_ptr &&
 			((smem_image_index_venus +
 				version_string_size) <= smem_block_size))
-		memcpy(smem_table_ptr + smem_image_index_venus,
+		if (str_image_version) memcpy(smem_table_ptr + smem_image_index_venus,
 				str_image_version, version_string_size);
 }
 
@@ -1734,8 +1721,6 @@ u32 hfi_process_msg_packet(msm_vidc_callback callback, u32 device_id,
 		struct vidc_hal_session_cmd_pkt *pkt =
 			(struct vidc_hal_session_cmd_pkt *)msg_hdr;
 		session = hfi_process_get_session(sessions, pkt->session_id);
-		/* Event of type HFI_EVENT_SYS_ERROR will not have any session
-		 * associated with it */
 		if (!session && (msg_hdr->packet != HFI_MSG_EVENT_NOTIFY)) {
 			dprintk(VIDC_ERR, "%s Got invalid session id: %d\n",
 					__func__, pkt->session_id);

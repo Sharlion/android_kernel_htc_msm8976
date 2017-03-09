@@ -28,12 +28,6 @@
 			reg = <0x800 0x100>;
 			qcom,secondary-pon-reset;
 			qcom,cfg-shutdown-for-hard-reset;
-
-			pon_perph_reg: qcom,pon_perph_reg {
-				regulator-name = "pon_spare_reg";
-				qcom,pon-spare-reg-addr = <0x8c>;
-				qcom,pon-spare-reg-bit = <1>;
-			};
 		};
 
 		pmi8950_vadc: vadc@3100 {
@@ -213,6 +207,9 @@
 			qcom,charge-unknown-battery;
 			qcom,force-aicl-rerun;
 			qcom,aicl-rerun-period-s = <180>;
+
+			qcom,vchg-adc-channel-id = <3>;
+			qcom,vchg_sns-vadc = <&pmi8950_vadc>;
 
 			qcom,chgr@1000 {
 				reg = <0x1000 0x100>;
@@ -556,7 +553,7 @@
 				qcom,default-led-trigger =
 						"flash0_trigger";
 				qcom,max-current = <1000>;
-				qcom,duration = <1280>;
+				qcom,duration = <600>;
 				qcom,id = <0>;
 				qcom,current = <625>;
 			};
@@ -567,7 +564,7 @@
 				qcom,default-led-trigger =
 						"flash1_trigger";
 				qcom,max-current = <1000>;
-				qcom,duration = <1280>;
+				qcom,duration = <600>;
 				qcom,id = <1>;
 				qcom,current = <625>;
 			};
@@ -592,6 +589,16 @@
 				qcom,current = <120>;
 			};
 
+			pmi8950_flashlight: qcom,flashlight {
+				label = "dual_leds";
+				qcom,led-name = "flashlight";
+				qcom,default-led-trigger =
+						"torch0_trigger";
+				qcom,max-current = <750>;
+				qcom,id = <3>;
+				qcom,current = <120>;
+			};
+
 			pmi8950_switch: qcom,switch {
 				label = "switch";
 				qcom,led-name = "led:switch";
@@ -601,9 +608,6 @@
 				qcom,duration = <1280>;
 				qcom,id = <2>;
 				qcom,current = <625>;
-				reg0 {
-					regulator-name = "pon_spare_reg";
-				};
 			};
 		};
 
@@ -628,6 +632,9 @@
 			qcom,wave-samples = [3e 3e 3e 3e 3e 3e 3e 3e];
 			qcom,wave-rep-cnt = <1>;
 			qcom,wave-samp-rep-cnt = <1>;
+			qcom,lra-auto-res-mode="qwd";
+			qcom,lra-high-z="opt1";
+			qcom,lra-res-cal-period = <0>;
 		};
 	};
 };

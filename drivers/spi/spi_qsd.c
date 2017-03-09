@@ -44,6 +44,7 @@
 #include <linux/msm-bus.h>
 #include <linux/msm-bus-board.h>
 #include "spi_qsd.h"
+#include <linux/spi/spi_htc.h>
 
 static int msm_spi_pm_resume_runtime(struct device *device);
 static int msm_spi_pm_suspend_runtime(struct device *device);
@@ -88,7 +89,35 @@ static inline void msm_spi_register_init(struct msm_spi *dd)
 	if (dd->qup_ver)
 		writel_relaxed(0x00000000, dd->base + QUP_OPERATIONAL_MASK);
 }
+struct msm_spi *dd_tmp;
+int msm_spi_pinctrl_set(int active)
+{
+	int result;
+	printk("[fp][SPI]msm_spi_pinctrl_set -> %s\n",active?"active":"sleep");
 
+	if(active)
+	{
+		result = pinctrl_select_state(dd_tmp->pinctrl, dd_tmp->pins_active);
+		if (result) {
+			dev_err(dd_tmp->dev, "%s: Can not set %s pins\n",
+			__func__, SPI_PINCTRL_STATE_DEFAULT);
+			result = 0;
+		}
+		result = 1;
+	}
+	else
+	{
+		result = pinctrl_select_state(dd_tmp->pinctrl, dd_tmp->pins_sleep);
+		if (result) {
+			dev_err(dd_tmp->dev, "%s: Can not set %s pins\n",
+			__func__, SPI_PINCTRL_STATE_SLEEP);
+			result = 0;
+		}
+		result = 1;
+	}
+
+	return result;
+}
 static int msm_spi_pinctrl_init(struct msm_spi *dd)
 {
 	dd->pinctrl = devm_pinctrl_get(dd->dev);
@@ -2530,6 +2559,7 @@ static int init_resources(struct platform_device *pdev)
 	int               pclk_enabled = 0;
 
 	dd = spi_master_get_devdata(master);
+	dd_tmp = dd;
 
 	if (dd->pdata && dd->pdata->use_pinctrl) {
 		rc = msm_spi_pinctrl_init(dd);
@@ -2787,7 +2817,6 @@ skip_dma_resources:
 		goto err_attrs;
 	}
 	spi_debugfs_init(dd);
-
 	return 0;
 
 err_attrs:

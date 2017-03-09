@@ -30,14 +30,9 @@ EXPORT_SYMBOL_GPL(noop_backing_dev_info);
 
 static struct class *bdi_class;
 
-/*
- * bdi_lock protects updates to bdi_list. bdi_list has RCU reader side
- * locking.
- */
 DEFINE_SPINLOCK(bdi_lock);
 LIST_HEAD(bdi_list);
 
-/* bdi_wq serves all asynchronous writeback tasks */
 struct workqueue_struct *bdi_wq;
 
 void bdi_lock_two(struct bdi_writeback *wb1, struct bdi_writeback *wb2)
@@ -277,20 +272,6 @@ int bdi_has_dirty_io(struct backing_dev_info *bdi)
 	return wb_has_dirty_io(&bdi->wb);
 }
 
-/*
- * This function is used when the first inode for this bdi is marked dirty. It
- * wakes-up the corresponding bdi thread which should then take care of the
- * periodic background write-out of dirty inodes. Since the write-out would
- * starts only 'dirty_writeback_interval' centisecs from now anyway, we just
- * set up a timer which wakes the bdi thread up later.
- *
- * Note, we wouldn't bother setting up the timer, but this function is on the
- * fast-path (used by '__mark_inode_dirty()'), so we save few context switches
- * by delaying the wake-up.
- *
- * We have to be careful not to postpone flush work if it is scheduled for
- * earlier. Thus we use queue_delayed_work().
- */
 void bdi_wakeup_thread_delayed(struct backing_dev_info *bdi)
 {
 	unsigned long timeout;
@@ -302,9 +283,6 @@ void bdi_wakeup_thread_delayed(struct backing_dev_info *bdi)
 	spin_unlock_bh(&bdi->wb_lock);
 }
 
-/*
- * Remove bdi from bdi_list, and ensure that it is no longer visible
- */
 static void bdi_remove_from_list(struct backing_dev_info *bdi)
 {
 	spin_lock_bh(&bdi_lock);
@@ -320,7 +298,7 @@ int bdi_register(struct backing_dev_info *bdi, struct device *parent,
 	va_list args;
 	struct device *dev;
 
-	if (bdi->dev)	/* The driver needs to use separate queues per device */
+	if (bdi->dev)	
 		return 0;
 
 	va_start(args, fmt);
@@ -349,44 +327,25 @@ int bdi_register_dev(struct backing_dev_info *bdi, dev_t dev)
 }
 EXPORT_SYMBOL(bdi_register_dev);
 
-/*
- * Remove bdi from the global list and shutdown any threads we have running
- */
 static void bdi_wb_shutdown(struct backing_dev_info *bdi)
 {
 	if (!bdi_cap_writeback_dirty(bdi))
 		return;
 
-	/*
-	 * Make sure nobody finds us on the bdi_list anymore
-	 */
 	bdi_remove_from_list(bdi);
 
-	/* Make sure nobody queues further work */
+	
 	spin_lock_bh(&bdi->wb_lock);
 	clear_bit(BDI_registered, &bdi->state);
 	spin_unlock_bh(&bdi->wb_lock);
 
-	/*
-	 * Drain work list and shutdown the delayed_work.  At this point,
-	 * @bdi->bdi_list is empty telling bdi_Writeback_workfn() that @bdi
-	 * is dying and its work_list needs to be drained no matter what.
-	 */
 	mod_delayed_work(bdi_wq, &bdi->wb.dwork, 0);
 	flush_delayed_work(&bdi->wb.dwork);
 	WARN_ON(!list_empty(&bdi->work_list));
 
-	/*
-	 * This shouldn't be necessary unless @bdi for some reason has
-	 * unflushed dirty IO after work_list is drained.  Do it anyway
-	 * just in case.
-	 */
 	cancel_delayed_work_sync(&bdi->wb.dwork);
 }
 
-/*
- * This bdi is going away now, make sure that no super_blocks point to it
- */
 static void bdi_prune_sb(struct backing_dev_info *bdi)
 {
 	struct super_block *sb;
@@ -433,9 +392,6 @@ static void bdi_wb_init(struct bdi_writeback *wb, struct backing_dev_info *bdi)
 	INIT_DELAYED_WORK(&wb->dwork, bdi_writeback_workfn);
 }
 
-/*
- * Initial write bandwidth: 100 MB/s
- */
 #define INIT_BW		(100 << (20 - PAGE_SHIFT))
 
 int bdi_init(struct backing_dev_info *bdi)
@@ -485,10 +441,6 @@ void bdi_destroy(struct backing_dev_info *bdi)
 {
 	int i;
 
-	/*
-	 * Splice our entries to the default_backing_dev_info, if this
-	 * bdi disappears
-	 */
 	if (bdi_has_dirty_io(bdi)) {
 		struct bdi_writeback *dst = &default_backing_dev_info.wb;
 
@@ -502,11 +454,6 @@ void bdi_destroy(struct backing_dev_info *bdi)
 
 	bdi_unregister(bdi);
 
-	/*
-	 * If bdi_unregister() had already been called earlier, the dwork
-	 * could still be pending because bdi_prune_sb() can race with the
-	 * bdi_wakeup_thread_delayed() calls from __mark_inode_dirty().
-	 */
 	cancel_delayed_work_sync(&bdi->wb.dwork);
 
 	for (i = 0; i < NR_BDI_STAT_ITEMS; i++)
@@ -516,10 +463,6 @@ void bdi_destroy(struct backing_dev_info *bdi)
 }
 EXPORT_SYMBOL(bdi_destroy);
 
-/*
- * For use from filesystems to quickly init and register a bdi associated
- * with dirty writeback
- */
 int bdi_setup_and_register(struct backing_dev_info *bdi, char *name,
 			   unsigned int cap)
 {
@@ -532,7 +475,7 @@ int bdi_setup_and_register(struct backing_dev_info *bdi, char *name,
 	if (err)
 		return err;
 
-	sprintf(tmp, "%.28s%s", name, "-%d");
+	snprintf(tmp, sizeof(tmp), "%.28s%s", name, "-%d");
 	err = bdi_register(bdi, NULL, tmp, atomic_long_inc_return(&bdi_seq));
 	if (err) {
 		bdi_destroy(bdi);
@@ -573,15 +516,6 @@ void set_bdi_congested(struct backing_dev_info *bdi, int sync)
 }
 EXPORT_SYMBOL(set_bdi_congested);
 
-/**
- * congestion_wait - wait for a backing_dev to become uncongested
- * @sync: SYNC or ASYNC IO
- * @timeout: timeout in jiffies
- *
- * Waits for up to @timeout jiffies for a backing_dev (any backing_dev) to exit
- * write congestion.  If no backing_devs are congested then just wait for the
- * next write to be completed.
- */
 long congestion_wait(int sync, long timeout)
 {
 	long ret;
@@ -600,24 +534,6 @@ long congestion_wait(int sync, long timeout)
 }
 EXPORT_SYMBOL(congestion_wait);
 
-/**
- * wait_iff_congested - Conditionally wait for a backing_dev to become uncongested or a zone to complete writes
- * @zone: A zone to check if it is heavily congested
- * @sync: SYNC or ASYNC IO
- * @timeout: timeout in jiffies
- *
- * In the event of a congested backing_dev (any backing_dev) and the given
- * @zone has experienced recent congestion, this waits for up to @timeout
- * jiffies for either a BDI to exit congestion of the given @sync queue
- * or a write to complete.
- *
- * In the absence of zone congestion, cond_resched() is called to yield
- * the processor if necessary but otherwise does not sleep.
- *
- * The return value is 0 if the sleep is for the full timeout. Otherwise,
- * it is the number of jiffies that were still remaining when the function
- * returned. return_value == timeout implies the function did not sleep.
- */
 long wait_iff_congested(struct zone *zone, int sync, long timeout)
 {
 	long ret;
@@ -625,16 +541,11 @@ long wait_iff_congested(struct zone *zone, int sync, long timeout)
 	DEFINE_WAIT(wait);
 	wait_queue_head_t *wqh = &congestion_wqh[sync];
 
-	/*
-	 * If there is no congestion, or heavy congestion is not being
-	 * encountered in the current zone, yield if necessary instead
-	 * of sleeping on the congestion queue
-	 */
 	if (atomic_read(&nr_bdi_congested[sync]) == 0 ||
 			!zone_is_reclaim_congested(zone)) {
 		cond_resched();
 
-		/* In case we scheduled, work out time remaining */
+		
 		ret = timeout - (jiffies - start);
 		if (ret < 0)
 			ret = 0;
@@ -642,7 +553,7 @@ long wait_iff_congested(struct zone *zone, int sync, long timeout)
 		goto out;
 	}
 
-	/* Sleep until uncongested or a write happens */
+	
 	prepare_to_wait(wqh, &wait, TASK_UNINTERRUPTIBLE);
 	ret = io_schedule_timeout(timeout);
 	finish_wait(wqh, &wait);

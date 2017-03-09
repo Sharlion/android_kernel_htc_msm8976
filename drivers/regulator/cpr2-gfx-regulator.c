@@ -36,25 +36,20 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
 
-/* Register Offsets for RB-CPR and Bit Definitions */
 
-/* RBCPR Version Register */
 #define REG_RBCPR_VERSION		0
 #define RBCPR_VER_2			0x02
 
-/* RBCPR Gate Count and Target Registers */
 #define REG_RBCPR_GCNT_TARGET(n)	(0x60 + 4 * n)
 
 #define RBCPR_GCNT_TARGET_GCNT_BITS	10
 #define RBCPR_GCNT_TARGET_GCNT_SHIFT	12
 #define RBCPR_GCNT_TARGET_GCNT_MASK	((1<<RBCPR_GCNT_TARGET_GCNT_BITS)-1)
 
-/* RBCPR Sensor Mask and Bypass Registers */
 #define REG_RBCPR_SENSOR_MASK0		0x20
 #define RBCPR_SENSOR_MASK0_SENSOR(n)	(~BIT(n))
 #define REG_RBCPR_SENSOR_BYPASS0	0x30
 
-/* RBCPR Timer Control */
 #define REG_RBCPR_TIMER_INTERVAL	0x44
 #define REG_RBIF_TIMER_ADJUST		0x4C
 
@@ -64,7 +59,6 @@
 #define RBIF_TIMER_ADJ_CONS_DOWN_MASK	((1<<RBIF_TIMER_ADJ_CONS_DOWN_BITS)-1)
 #define RBIF_TIMER_ADJ_CONS_DOWN_SHIFT	4
 
-/* RBCPR Config Register */
 #define REG_RBIF_LIMIT			0x48
 #define REG_RBCPR_STEP_QUOT		0x80
 #define REG_RBIF_SW_VLEVEL		0x94
@@ -85,7 +79,6 @@
 #define RBCPR_STEP_QUOT_IDLE_CLK_MASK	((1<<RBCPR_STEP_QUOT_IDLE_CLK_BITS)-1)
 #define RBCPR_STEP_QUOT_IDLE_CLK_SHIFT	8
 
-/* RBCPR Control Register */
 #define REG_RBCPR_CTL			0x90
 
 #define RBCPR_CTL_LOOP_EN			BIT(0)
@@ -100,11 +93,9 @@
 #define RBCPR_CTL_DN_THRESHOLD_MASK	((1<<RBCPR_CTL_DN_THRESHOLD_BITS)-1)
 #define RBCPR_CTL_DN_THRESHOLD_SHIFT	28
 
-/* RBCPR Ack/Nack Response */
 #define REG_RBIF_CONT_ACK_CMD		0x98
 #define REG_RBIF_CONT_NACK_CMD		0x9C
 
-/* RBCPR Result status Register */
 #define REG_RBCPR_RESULT_0		0xA0
 #define REG_RBCPR_RESULT_1		0xA4
 
@@ -125,7 +116,6 @@
 #define RBCPR_RESULT0_ERROR_STEPS_MASK	((1<<RBCPR_RESULT0_ERROR_STEPS_BITS)-1)
 #define RBCPR_RESULT0_STEP_UP_SHIFT	1
 
-/* RBCPR Interrupt Control Register */
 #define REG_RBIF_IRQ_EN(n)		(0x100 + 4 * n)
 #define REG_RBIF_IRQ_CLEAR		0x110
 #define REG_RBIF_IRQ_STATUS		0x114
@@ -141,7 +131,6 @@
 			CPR_INT_MID | CPR_INT_UP | CPR_INT_MAX | CPR_INT_CLAMP)
 #define CPR_INT_DEFAULT	(CPR_INT_UP | CPR_INT_DOWN)
 
-/* RBCPR Debug Resgister */
 #define REG_RBCPR_DEBUG1		0x120
 #define RBCPR_DEBUG1_QUOT_FAST_BITS	12
 #define RBCPR_DEBUG1_QUOT_SLOW_BITS	12
@@ -153,7 +142,6 @@
 #define RBCPR_DEBUG1_QUOT_SLOW(val)	((val>>RBCPR_DEBUG1_QUOT_SLOW_SHIFT) & \
 					((1<<RBCPR_DEBUG1_QUOT_SLOW_BITS)-1))
 
-/* RBCPR Aging Resgister */
 #define REG_RBCPR_HTOL_AGE		0x160
 #define RBCPR_HTOL_AGE_PAGE		BIT(1)
 #define RBCPR_AGE_DATA_STATUS		BIT(2)
@@ -167,31 +155,12 @@
 #define FUSE_PARAM_MATCH_ANY		0xFFFFFFFF
 
 #define CPR_CORNER_MIN		1
-/*
- * This is an arbitrary upper limit which is used in a sanity check in order to
- * avoid excessive memory allocation due to bad device tree data.
- */
 #define CPR_CORNER_LIMIT	100
 
-/*
- * The amount of time to wait for the CPR controller to become idle when
- * performing an aging measurement.
- */
 #define CPR_AGING_MEASUREMENT_TIMEOUT_NS	5000000
 
-/*
- * The number of individual aging measurements to perform which are then
- * averaged together in order to determine the final aging adjustment value.
- */
 #define CPR_AGING_MEASUREMENT_ITERATIONS	16
 
-/*
- * Aging measurements for the aged and unaged ring oscillators take place a few
- * microseconds apart.  If the vdd-supply voltage fluctuates between the two
- * measurements, then the difference between them will be incorrect.  The
- * difference could end up too high or too low.  This constant defines the
- * number of lowest and highest measurements to ignore when averaging.
- */
 #define CPR_AGING_MEASUREMENT_FILTER	3
 
 enum voltage_change_dir {
@@ -235,31 +204,31 @@ struct cpr2_gfx_regulator {
 	int			ceiling_max;
 	struct dentry		*debugfs;
 
-	/* eFuse parameters */
+	
 	phys_addr_t		efuse_addr;
 	void __iomem		*efuse_base;
 	u64			*remapped_row;
 	u32			remapped_row_base;
 	int			num_remapped_rows;
 
-	/* Process voltage parameters */
+	
 	int			*open_loop_volt;
-	/* Process voltage variables */
+	
 	u32			process_id;
 	u32			foundry_id;
 
-	/* GPU voltage regulator */
+	
 	struct regulator	*vdd_gfx;
 
-	/* Dependency parameters */
+	
 	struct regulator	*vdd_mx;
 	int			vdd_mx_vmin;
 	int			*vdd_mx_corner_map;
 
-	/* mem-acc regulator */
+	
 	struct regulator	*mem_acc_vreg;
 
-	/* CPR parameters */
+	
 	bool			cpr_fuse_disable;
 	int			cpr_fuse_revision;
 	int			cpr_fuse_map_count;
@@ -279,7 +248,7 @@ struct cpr2_gfx_regulator {
 	int			*save_ctl;
 	int			*save_irq;
 
-	/* Config parameters */
+	
 	bool			enable;
 	u32			ref_clk_khz;
 	u32			timer_delay_us;
@@ -359,19 +328,6 @@ static u64 cpr_read_efuse_row(struct cpr2_gfx_regulator *cpr_vreg, u32 row_num)
 	return efuse_bits;
 }
 
-/**
- * cpr_read_efuse_param() - read a parameter from one or two eFuse rows
- * @cpr_vreg:	Pointer to cpr2_gfx_regulator struct for this regulator.
- * @row_start:	Fuse row number to start reading from.
- * @bit_start:	The LSB of the parameter to read from the fuse.
- * @bit_len:	The length of the parameter in bits.
- *
- * This function reads a parameter of specified offset and bit size out of one
- * or two consecutive eFuse rows.  This allows for the reading of parameters
- * that happen to be split between two eFuse rows.
- *
- * Returns the fuse parameter on success or 0 on failure.
- */
 static u64 cpr_read_efuse_param(struct cpr2_gfx_regulator *cpr_vreg,
 				int row_start, int bit_start, int bit_len)
 {
@@ -390,9 +346,9 @@ static u64 cpr_read_efuse_param(struct cpr2_gfx_regulator *cpr_vreg,
 		return 0;
 	}
 
-	/* Allow bit indexing to start beyond the end of the start row. */
+	
 	if (bit_start >= 64) {
-		row_start += bit_start >> 6; /* equivalent to bit_start / 64 */
+		row_start += bit_start >> 6; 
 		bit_start &= 0x3F;
 	}
 
@@ -479,7 +435,7 @@ static void cpr_ctl_enable(struct cpr2_gfx_regulator *cpr_vreg, int corner)
 	if (cpr_vreg->is_cpr_suspended || !cpr_vreg->ctrl_enable)
 		return;
 
-	/* Program Consecutive Up & Down */
+	
 	val = ((cpr_vreg->timer_cons_down & RBIF_TIMER_ADJ_CONS_DOWN_MASK)
 			<< RBIF_TIMER_ADJ_CONS_DOWN_SHIFT) |
 		(cpr_vreg->timer_cons_up & RBIF_TIMER_ADJ_CONS_UP_MASK);
@@ -549,13 +505,13 @@ static void cpr_corner_restore(struct cpr2_gfx_regulator *cpr_vreg, int corner)
 	if (!cpr_vreg->ctrl_enable)
 		return;
 
-	/* Program the step quotient and idle clocks */
+	
 	step_quot = ((cpr_vreg->idle_clocks & RBCPR_STEP_QUOT_IDLE_CLK_MASK)
 			<< RBCPR_STEP_QUOT_IDLE_CLK_SHIFT) |
 		(cpr_vreg->step_quotient & RBCPR_STEP_QUOT_STEPQUOT_MASK);
 	cpr_write(cpr_vreg, REG_RBCPR_STEP_QUOT, step_quot);
 
-	/* Program the target quotient value and gate count of all ROs */
+	
 	for (i = 0; i < cpr_vreg->ro_count; i++) {
 		gcnt = cpr_vreg->gcnt
 				| (cpr_vreg->cpr_target_quot[corner][i]);
@@ -611,7 +567,7 @@ static int cpr2_gfx_scale_voltage(struct cpr2_gfx_regulator *cpr_vreg,
 {
 	int rc = 0, vdd_mx_vmin = 0;
 
-	/* Determine the vdd_mx voltage */
+	
 	if (dir != NO_CHANGE && cpr_vreg->vdd_mx != NULL)
 		vdd_mx_vmin = cpr_vreg->vdd_mx_corner_map[corner];
 
@@ -694,13 +650,13 @@ static void cpr2_gfx_scale(struct cpr2_gfx_regulator *cpr_vreg,
 			cpr_debug_irq(cpr_vreg, "gcnt target dump: [%s]\n",
 					buf);
 
-			/* Maximize the UP threshold */
+			
 			reg_mask = RBCPR_CTL_UP_THRESHOLD_MASK <<
 					RBCPR_CTL_UP_THRESHOLD_SHIFT;
 			reg_val = reg_mask;
 			cpr_ctl_modify(cpr_vreg, reg_mask, reg_val);
 
-			/* Disable UP interrupt */
+			
 			cpr_irq_set(cpr_vreg, CPR_INT_DEFAULT & ~CPR_INT_UP);
 
 			goto _exit;
@@ -714,7 +670,7 @@ static void cpr2_gfx_scale(struct cpr2_gfx_regulator *cpr_vreg,
 			error_steps = cpr_vreg->vdd_gfx_step_up_limit;
 		}
 
-		/* Calculate new voltage */
+		
 		new_volt = last_volt + (error_steps * cpr_vreg->step_volt);
 		if (new_volt > cpr_vreg->ceiling_volt[corner]) {
 			cpr_debug_irq(cpr_vreg,
@@ -731,16 +687,16 @@ static void cpr2_gfx_scale(struct cpr2_gfx_regulator *cpr_vreg,
 		}
 		cpr_vreg->last_volt[corner] = new_volt;
 
-		/* Disable auto nack down */
+		
 		reg_mask = RBCPR_CTL_SW_AUTO_CONT_NACK_DN_EN;
 		reg_val = 0;
 
 		cpr_ctl_modify(cpr_vreg, reg_mask, reg_val);
 
-		/* Re-enable default interrupts */
+		
 		cpr_irq_set(cpr_vreg, CPR_INT_DEFAULT);
 
-		/* Ack */
+		
 		cpr_irq_clr_ack(cpr_vreg);
 
 		cpr_debug_irq(cpr_vreg, "UP: -> new_volt[corner:%d] = %d uV\n",
@@ -760,13 +716,13 @@ static void cpr2_gfx_scale(struct cpr2_gfx_regulator *cpr_vreg,
 			cpr_debug_irq(cpr_vreg, "gcnt target dump: [%s]\n",
 					buf);
 
-			/* Enable auto nack down */
+			
 			reg_mask = RBCPR_CTL_SW_AUTO_CONT_NACK_DN_EN;
 			reg_val = RBCPR_CTL_SW_AUTO_CONT_NACK_DN_EN;
 
 			cpr_ctl_modify(cpr_vreg, reg_mask, reg_val);
 
-			/* Disable DOWN interrupt */
+			
 			cpr_irq_set(cpr_vreg, CPR_INT_DEFAULT & ~CPR_INT_DOWN);
 
 			goto _exit;
@@ -780,7 +736,7 @@ static void cpr2_gfx_scale(struct cpr2_gfx_regulator *cpr_vreg,
 			error_steps = cpr_vreg->vdd_gfx_step_down_limit;
 		}
 
-		/* Calculte new voltage */
+		
 		new_volt = last_volt - (error_steps * cpr_vreg->step_volt);
 		if (new_volt < cpr_vreg->floor_volt[corner]) {
 			cpr_debug_irq(cpr_vreg,
@@ -795,17 +751,17 @@ static void cpr2_gfx_scale(struct cpr2_gfx_regulator *cpr_vreg,
 		}
 		cpr_vreg->last_volt[corner] = new_volt;
 
-		/* Restore default threshold for UP */
+		
 		reg_mask = RBCPR_CTL_UP_THRESHOLD_MASK <<
 				RBCPR_CTL_UP_THRESHOLD_SHIFT;
 		reg_val = cpr_vreg->up_threshold <<
 				RBCPR_CTL_UP_THRESHOLD_SHIFT;
 		cpr_ctl_modify(cpr_vreg, reg_mask, reg_val);
 
-		/* Re-enable default interrupts */
+		
 		cpr_irq_set(cpr_vreg, CPR_INT_DEFAULT);
 
-		/* Ack */
+		
 		cpr_irq_clr_ack(cpr_vreg);
 
 		cpr_debug_irq(cpr_vreg,
@@ -825,7 +781,7 @@ static irqreturn_t cpr2_gfx_irq_handler(int irq, void *dev)
 	mutex_lock(&cpr_vreg->cpr_mutex);
 
 	if (!cpr_vreg->ctrl_enable) {
-		/* Already disabled */
+		
 		cpr_debug_irq(cpr_vreg,
 				"CPR interrupt received but CPR is disabled\n");
 		goto _exit;
@@ -850,7 +806,7 @@ static irqreturn_t cpr2_gfx_irq_handler(int irq, void *dev)
 		goto _exit;
 	}
 
-	/* Following sequence of handling is as per each IRQ's priority */
+	
 	if (reg_val & CPR_INT_UP) {
 		cpr2_gfx_scale(cpr_vreg, UP);
 	} else if (reg_val & CPR_INT_DOWN) {
@@ -860,14 +816,14 @@ static irqreturn_t cpr2_gfx_irq_handler(int irq, void *dev)
 	} else if (reg_val & CPR_INT_MAX) {
 		cpr_irq_clr_nack(cpr_vreg);
 	} else if (reg_val & CPR_INT_MID) {
-		/* RBCPR_CTL_SW_AUTO_CONT_ACK_EN is enabled */
+		
 		cpr_debug_irq(cpr_vreg, "IRQ occurred for Mid Flag\n");
 	} else {
 		cpr_debug_irq(cpr_vreg,
 			"IRQ occurred for unknown flag (0x%08x)\n", reg_val);
 	}
 
-	/* Save register values for the corner */
+	
 	cpr_corner_save(cpr_vreg, cpr_vreg->corner);
 
 _exit:
@@ -875,13 +831,6 @@ _exit:
 	return IRQ_HANDLED;
 }
 
-/**
- * cpr2_gfx_clock_enable() - prepare and enable all clocks used by this CPR GFX
- *			controller
- * @cpr_verg:		Pointer to the cpr2 gfx controller
- *
- * Return: 0 on success, errno on failure
- */
 static int cpr2_gfx_clock_enable(struct cpr2_gfx_regulator *cpr_vreg)
 {
 	int rc;
@@ -908,13 +857,6 @@ static int cpr2_gfx_clock_enable(struct cpr2_gfx_regulator *cpr_vreg)
 	return 0;
 }
 
-/**
- * cpr2_gfx_clock_disable() - disable and unprepare all clocks used by this CPR
- *			GFX controller
- * @cpr_vreg:		Pointer to the CPR2 controller
- *
- * Return: none
- */
 static void cpr2_gfx_clock_disable(struct cpr2_gfx_regulator *cpr_vreg)
 {
 	if (cpr_vreg->core_clk)
@@ -931,12 +873,6 @@ static int cpr2_gfx_regulator_is_enabled(struct regulator_dev *rdev)
 	return cpr_vreg->vreg_enabled;
 }
 
-/**
- * cpr2_gfx_closed_loop_enable() - enable logical CPR closed-loop operation
- * @cpr_vreg:	Pointer to the cpr2 gfx regulator
- *
- * Return: 0 on success, error on failure
- */
 static inline int cpr2_gfx_closed_loop_enable(struct cpr2_gfx_regulator
 						*cpr_vreg)
 {
@@ -945,10 +881,10 @@ static inline int cpr2_gfx_closed_loop_enable(struct cpr2_gfx_regulator
 	if (!cpr_is_allowed(cpr_vreg)) {
 		return -EPERM;
 	} else if (cpr_vreg->ctrl_enable) {
-		/* Already enabled */
+		
 		return 0;
 	} else if (cpr_vreg->is_cpr_suspended) {
-		/* CPR must remain disabled as the system is entering suspend */
+		
 		return 0;
 	}
 
@@ -965,17 +901,11 @@ static inline int cpr2_gfx_closed_loop_enable(struct cpr2_gfx_regulator
 	return 0;
 }
 
-/**
- * cpr2_gfx_closed_loop_disable() - disable logical CPR closed-loop operation
- * @cpr_vreg:	Pointer to the cpr2 gfx regulator
- *
- * Return: 0 on success, error on failure
- */
 static inline int cpr2_gfx_closed_loop_disable(struct cpr2_gfx_regulator
 						*cpr_vreg)
 {
 	if (!cpr_vreg->ctrl_enable) {
-		/* Already disabled */
+		
 		return 0;
 	}
 
@@ -993,7 +923,7 @@ static int cpr2_gfx_regulator_enable(struct regulator_dev *rdev)
 
 	mutex_lock(&cpr_vreg->cpr_mutex);
 
-	/* Enable dependency power before vdd_gfx */
+	
 	if (cpr_vreg->vdd_mx) {
 		rc = regulator_enable(cpr_vreg->vdd_mx);
 		if (rc) {
@@ -1067,14 +997,6 @@ _exit:
 	return rc;
 }
 
-/**
- * cmp_int() - int comparison function to be passed into the sort() function
- *		which leads to ascending sorting
- * @a:			First int value
- * @b:			Second int value
- *
- * Return: >0 if a > b, 0 if a == b, <0 if a < b
- */
 static int cmp_int(const void *a, const void *b)
 {
 	return *(int *)a - *(int *)b;
@@ -1097,11 +1019,11 @@ static int cpr_get_aging_quot_delta(struct cpr2_gfx_regulator *cpr_vreg,
 	if (!quot_delta_results)
 		return -ENOMEM;
 
-	/* Clear the target quotient value and gate count of all ROs */
+	
 	for (i = 0; i < cpr_vreg->ro_count; i++)
 		cpr_write(cpr_vreg, REG_RBCPR_GCNT_TARGET(i), 0);
 
-	/* Program GCNT0/1 for getting aging data */
+	
 	gcnt_ref = (cpr_vreg->ref_clk_khz * cpr_vreg->gcnt_time_us) / 1000;
 	gcnt = gcnt_ref * 3 / 2;
 	val = (gcnt & RBCPR_GCNT_TARGET_GCNT_MASK) <<
@@ -1115,28 +1037,28 @@ static int cpr_get_aging_quot_delta(struct cpr2_gfx_regulator *cpr_vreg,
 	val = cpr_read(cpr_vreg, REG_RBCPR_GCNT_TARGET(1));
 	cpr_debug(cpr_vreg, "RBCPR_GCNT_TARGET1 = 0x%08x\n", val);
 
-	/* Program TIMER_INTERVAL to zero */
+	
 	cpr_write(cpr_vreg, REG_RBCPR_TIMER_INTERVAL, 0);
 
-	/* Bypass sensors in collapsible domain */
+	
 	if (cpr_vreg->aging_info->aging_sensor_bypass)
 		cpr_write(cpr_vreg, REG_RBCPR_SENSOR_BYPASS0,
 			(cpr_vreg->aging_info->aging_sensor_bypass &
 		RBCPR_SENSOR_MASK0_SENSOR(aging_sensor_info->sensor_id)));
 
-	/* Mask other sensors */
+	
 	cpr_write(cpr_vreg, REG_RBCPR_SENSOR_MASK0,
 		RBCPR_SENSOR_MASK0_SENSOR(aging_sensor_info->sensor_id));
 	val = cpr_read(cpr_vreg, REG_RBCPR_SENSOR_MASK0);
 	cpr_debug(cpr_vreg, "RBCPR_SENSOR_MASK0 = 0x%08x\n", val);
 
-	/* Enable cpr controller */
+	
 	cpr_ctl_modify(cpr_vreg, RBCPR_CTL_LOOP_EN, RBCPR_CTL_LOOP_EN);
 
-	/* Make sure cpr starts measurement with toggling busy bit */
+	
 	mb();
 
-	/* Wait and Ignore the first measurement. Time-out after 5ms */
+	
 	max_wait_ns = CPR_AGING_MEASUREMENT_TIMEOUT_NS;
 	start = ktime_get();
 	do {
@@ -1151,7 +1073,7 @@ static int cpr_get_aging_quot_delta(struct cpr2_gfx_regulator *cpr_vreg,
 		usleep_range(50, 100);
 	} while (cpr_ctl_is_busy(cpr_vreg));
 
-	/* Set age page mode */
+	
 	cpr_write(cpr_vreg, REG_RBCPR_HTOL_AGE, RBCPR_HTOL_AGE_PAGE);
 
 
@@ -1159,19 +1081,11 @@ static int cpr_get_aging_quot_delta(struct cpr2_gfx_regulator *cpr_vreg,
 	quot_delta_scaled_sum = 0;
 
 	for (i = 0; i < CPR_AGING_MEASUREMENT_ITERATIONS; i++) {
-		/* Send cont nack */
+		
 		cpr_write(cpr_vreg, REG_RBIF_CONT_NACK_CMD, 1);
 
-		/*
-		 * Make sure cpr starts next measurement with
-		 * toggling busy bit
-		 */
 		mb();
 
-		/*
-		 * Wait for controller to finish measurement
-		 * and time-out after 5ms
-		 */
 		max_wait_ns = CPR_AGING_MEASUREMENT_TIMEOUT_NS;
 		start = ktime_get();
 		do {
@@ -1186,7 +1100,7 @@ static int cpr_get_aging_quot_delta(struct cpr2_gfx_regulator *cpr_vreg,
 			usleep_range(50, 100);
 		} while (cpr_ctl_is_busy(cpr_vreg));
 
-		/* Check for PAGE_IS_AGE flag in status register */
+		
 		val = cpr_read(cpr_vreg, REG_RBCPR_HTOL_AGE);
 		is_aging_measurement = val & RBCPR_AGE_DATA_STATUS;
 
@@ -1205,11 +1119,6 @@ static int cpr_get_aging_quot_delta(struct cpr2_gfx_regulator *cpr_vreg,
 			quot_max = RBCPR_DEBUG1_QUOT_FAST(val);
 		}
 
-		/*
-		 * Scale the quotients so that they are equivalent to the fused
-		 * values.  This accounts for the difference in measurement
-		 * interval times.
-		 */
 
 		quot_min_scaled = quot_min * (gcnt_ref + 1) / (gcnt + 1);
 		quot_max_scaled = quot_max * (gcnt_ref + 1) / (gcnt + 1);
@@ -1255,24 +1164,24 @@ static int cpr_get_aging_quot_delta(struct cpr2_gfx_regulator *cpr_vreg,
 	}
 
 _exit:
-	/* Clear age page bit */
+	
 	cpr_write(cpr_vreg, REG_RBCPR_HTOL_AGE, 0x0);
 
-	/* Disable the CPR controller after aging procedure */
+	
 	cpr_ctl_modify(cpr_vreg, RBCPR_CTL_LOOP_EN, 0x0);
 
-	/* Clear the sensor bypass */
+	
 	if (cpr_vreg->aging_info->aging_sensor_bypass)
 		cpr_write(cpr_vreg, REG_RBCPR_SENSOR_BYPASS0, 0x0);
 
-	/* Unmask all sensors */
+	
 	cpr_write(cpr_vreg, REG_RBCPR_SENSOR_MASK0, 0x0);
 
-	/* Clear gcnt0/1 registers */
+	
 	cpr_write(cpr_vreg, REG_RBCPR_GCNT_TARGET(0), 0x0);
 	cpr_write(cpr_vreg, REG_RBCPR_GCNT_TARGET(1), 0x0);
 
-	/* Program the delay count for the timer */
+	
 	val = (cpr_vreg->ref_clk_khz * cpr_vreg->timer_delay_us) / 1000;
 	cpr_write(cpr_vreg, REG_RBCPR_TIMER_INTERVAL, val);
 
@@ -1317,10 +1226,6 @@ static void cpr_de_aging_adjustment(struct cpr2_gfx_regulator *cpr_vreg)
 	aging_voltage_adjust = DIV_ROUND_UP(max_quot_diff * 1000000,
 					aging_info->aging_ro_kv);
 
-	/*
-	 * Log per-virtual corner target quotients since they are useful for
-	 * baseline CPR logging.
-	 */
 	buflen = cpr_vreg->ro_count * (MAX_CHARS_PER_INT + 2) * sizeof(*buf);
 	buf = kzalloc(buflen, GFP_KERNEL);
 	if (buf == NULL) {
@@ -1329,7 +1234,7 @@ static void cpr_de_aging_adjustment(struct cpr2_gfx_regulator *cpr_vreg)
 	}
 
 	for (i = CPR_CORNER_MIN; i <= cpr_vreg->num_corners; i++) {
-		/* Remove initial max aging adjustment */
+		
 		for (j = 0; j < cpr_vreg->ro_count; j++)
 			cpr_vreg->cpr_target_quot[i][j] -=
 					(aging_info->cpr_ro_kv[j]
@@ -1337,7 +1242,7 @@ static void cpr_de_aging_adjustment(struct cpr2_gfx_regulator *cpr_vreg)
 		aging_info->voltage_adjust[i] = 0;
 
 		if (aging_voltage_adjust > 0) {
-			/* Add required aging adjustment */
+			
 			voltage_adjust = (aging_voltage_adjust
 					* aging_info->aging_derate[i]) / 1000;
 			voltage_adjust = min(voltage_adjust,
@@ -1371,7 +1276,7 @@ static int cpr_calculate_de_aging_margin(struct cpr2_gfx_regulator *cpr_vreg)
 	save_ctl = cpr_read(cpr_vreg, REG_RBCPR_CTL);
 	save_irq = cpr_read(cpr_vreg, REG_RBIF_IRQ_EN(cpr_vreg->irq_line));
 
-	/* Disable interrupt and CPR */
+	
 	cpr_irq_set(cpr_vreg, 0);
 	cpr_write(cpr_vreg, REG_RBCPR_CTL, 0);
 
@@ -1380,7 +1285,7 @@ static int cpr_calculate_de_aging_margin(struct cpr2_gfx_regulator *cpr_vreg)
 	else if (aging_info->aging_corner < cpr_vreg->corner)
 		change_dir = DOWN;
 
-	/* set selected reference voltage for de-aging */
+	
 	rc = cpr2_gfx_scale_voltage(cpr_vreg,
 				aging_info->aging_corner,
 				aging_info->aging_ref_voltage,
@@ -1391,7 +1296,7 @@ static int cpr_calculate_de_aging_margin(struct cpr2_gfx_regulator *cpr_vreg)
 		return rc;
 	}
 
-	/* Configure to PWM mode */
+	
 	rc = regulator_set_mode(cpr_vreg->vdd_gfx, REGULATOR_MODE_NORMAL);
 	if (rc) {
 		cpr_err(cpr_vreg, "unable to configure vdd-supply for mode=%u, rc=%d\n",
@@ -1402,7 +1307,7 @@ static int cpr_calculate_de_aging_margin(struct cpr2_gfx_regulator *cpr_vreg)
 	cpr_de_aging_adjustment(cpr_vreg);
 	aging_info->cpr_aging_done = true;
 
-	/* Configure back to initial mode */
+	
 	rc = regulator_set_mode(cpr_vreg->vdd_gfx, REGULATOR_MODE_IDLE);
 	if (rc) {
 		cpr_err(cpr_vreg, "unable to configure vdd-supply for mode=%u, rc=%d\n",
@@ -1410,10 +1315,10 @@ static int cpr_calculate_de_aging_margin(struct cpr2_gfx_regulator *cpr_vreg)
 		return rc;
 	}
 
-	/* Clear interrupts */
+	
 	cpr_irq_clr(cpr_vreg);
 
-	/* Restore register values */
+	
 	cpr_irq_set(cpr_vreg, save_irq);
 	cpr_write(cpr_vreg, REG_RBCPR_CTL, save_ctl);
 
@@ -1445,7 +1350,7 @@ static int cpr2_gfx_regulator_set_voltage(struct regulator_dev *rdev,
 	else if (corner < cpr_vreg->corner)
 		change_dir = DOWN;
 
-	/* Read age sensor data and apply de-aging adjustments */
+	
 	if (cpr_vreg->vreg_enabled && aging_info && !aging_info->cpr_aging_done
 		&& corner >= aging_info->min_gfx_corner
 		&& corner <= aging_info->aging_corner) {
@@ -1572,11 +1477,6 @@ static int cpr2_gfx_allocate_memory(struct cpr2_gfx_regulator *cpr_vreg)
 	}
 	cpr_info(cpr_vreg, "ro_count = %d\n", cpr_vreg->ro_count);
 
-	/*
-	 * The arrays sized based on the corner count ignore element 0
-	 * in order to simplify indexing throughout the driver since min_uV = 0
-	 * cannot be passed into a set_voltage() callback.
-	 */
 	len = cpr_vreg->num_corners + 1;
 
 	cpr_vreg->open_loop_volt = devm_kzalloc(dev,
@@ -1628,10 +1528,6 @@ static int cpr_mem_acc_init(struct cpr2_gfx_regulator *cpr_vreg)
 	return 0;
 }
 
-/*
- * Create a set of virtual fuse rows if optional device tree properties are
- * present.
- */
 static int cpr_remap_efuse_data(struct cpr2_gfx_regulator *cpr_vreg)
 {
 	struct device_node *of_node = cpr_vreg->dev->of_node;
@@ -1642,7 +1538,7 @@ static int cpr_remap_efuse_data(struct cpr2_gfx_regulator *cpr_vreg)
 
 	prop = of_find_property(of_node, "qcom,fuse-remap-source", NULL);
 	if (!prop) {
-		/* No fuse remapping needed. */
+		
 		return 0;
 	}
 
@@ -1674,10 +1570,6 @@ static int cpr_remap_efuse_data(struct cpr2_gfx_regulator *cpr_vreg)
 		goto done;
 	}
 
-	/*
-	 * Format of tuples in qcom,fuse-remap-source property:
-	 * <row bit-offset bit-count>
-	 */
 	for (i = 0, bits = 0; i < size; i++)
 		bits += temp[i * 3 + 2];
 
@@ -1771,7 +1663,7 @@ static int cpr_parse_fuse_parameters(struct cpr2_gfx_regulator *cpr_vreg)
 				rc);
 			return rc;
 		} else {
-			/* Property not exist; Assigning a wild card value */
+			
 			cpr_vreg->cpr_fuse_revision = FUSE_REVISION_UNKNOWN;
 		}
 	} else {
@@ -1789,7 +1681,7 @@ static int cpr_parse_fuse_parameters(struct cpr2_gfx_regulator *cpr_vreg)
 				rc);
 			return rc;
 		} else {
-			/* Property not exist; Assigning a wild card value */
+			
 			cpr_vreg->process_id = (INT_MAX - 1);
 		}
 	} else {
@@ -1806,7 +1698,7 @@ static int cpr_parse_fuse_parameters(struct cpr2_gfx_regulator *cpr_vreg)
 				rc);
 			return rc;
 		} else {
-			/* Property not exist; Assigning a wild card value */
+			
 			cpr_vreg->foundry_id = (INT_MAX - 1);
 		}
 	} else {
@@ -1826,16 +1718,16 @@ static int cpr_find_fuse_map_match(struct cpr2_gfx_regulator *cpr_vreg)
 	int len = 0;
 	u32 *tmp;
 
-	/* Specify default no match case. */
+	
 	cpr_vreg->cpr_fuse_map_match = FUSE_MAP_NO_MATCH;
 	cpr_vreg->cpr_fuse_map_count = 0;
 
 	if (!of_find_property(of_node, "qcom,cpr-fuse-version-map", &len)) {
-		/* No mapping present. */
+		
 		return 0;
 	}
 
-	tuple_size = 3; /* <foundry_id> <cpr_fuse_revision> <process_id> */
+	tuple_size = 3; 
 	cpr_vreg->cpr_fuse_map_count = len / (sizeof(u32) * tuple_size);
 
 	if (len == 0 || len % (sizeof(u32) * tuple_size)) {
@@ -1858,10 +1750,6 @@ static int cpr_find_fuse_map_match(struct cpr2_gfx_regulator *cpr_vreg)
 		goto done;
 	}
 
-	/*
-	 * qcom,cpr-fuse-version-map tuple format:
-	 * <foundry_id, cpr_fuse_revision process_id>
-	 */
 	for (i = 0; i < cpr_vreg->cpr_fuse_map_count; i++) {
 		if (tmp[i * tuple_size] != cpr_vreg->foundry_id
 		    && tmp[i * tuple_size] != FUSE_PARAM_MATCH_ANY)
@@ -1926,16 +1814,12 @@ static int cpr_adjust_init_voltages(struct cpr2_gfx_regulator *cpr_vreg)
 
 	if (!of_find_property(of_node, "qcom,cpr-init-voltage-adjustment",
 				&len)) {
-		/* No initial voltage adjustment needed. */
+		
 		return 0;
 	}
 
 	if (cpr_vreg->cpr_fuse_map_count) {
 		if (cpr_vreg->cpr_fuse_map_match == FUSE_MAP_NO_MATCH) {
-			/*
-			 * No matching index to use for initial voltage
-			 * adjustment.
-			 */
 			return 0;
 		}
 		tuple_count = cpr_vreg->cpr_fuse_map_count;
@@ -2084,10 +1968,6 @@ static int cpr_pvs_init(struct cpr2_gfx_regulator *cpr_vreg)
 		}
 	}
 
-	/*
-	 * Log ceiling, floor, and inital voltages since they are critical for
-	 * all CPR debugging.
-	 */
 	buflen = cpr_vreg->num_corners * (MAX_CHARS_PER_INT + 2)
 			* sizeof(*buf);
 	buf = kzalloc(buflen, GFP_KERNEL);
@@ -2175,7 +2055,7 @@ static int cpr_gfx_init(struct cpr2_gfx_regulator *cpr_vreg)
 		return rc;
 	}
 
-	/* Check dependencies */
+	
 	if (of_find_property(of_node, "vdd-mx-supply", NULL)) {
 		cpr_vreg->vdd_mx = devm_regulator_get(cpr_vreg->dev, "vdd-mx");
 		if (IS_ERR_OR_NULL(cpr_vreg->vdd_mx)) {
@@ -2238,10 +2118,6 @@ static int cpr_init_target_quotients(struct cpr2_gfx_regulator *cpr_vreg)
 
 	if (cpr_vreg->cpr_fuse_map_count) {
 		if (cpr_vreg->cpr_fuse_map_match == FUSE_MAP_NO_MATCH) {
-			/*
-			 * No matching index to use for initial voltage
-			 * adjustment.
-			 */
 			return 0;
 		}
 		tuple_count = cpr_vreg->cpr_fuse_map_count;
@@ -2282,10 +2158,6 @@ static int cpr_init_target_quotients(struct cpr2_gfx_regulator *cpr_vreg)
 		}
 	}
 	kfree(temp);
-	/*
-	 * Log per-virtual corner target quotients since they are useful for
-	 * baseline CPR logging.
-	 */
 	buflen = cpr_vreg->ro_count * (MAX_CHARS_PER_INT + 2) * sizeof(*buf);
 	buf = kzalloc(buflen, GFP_KERNEL);
 	if (buf == NULL) {
@@ -2316,14 +2188,14 @@ static int cpr_check_de_aging_allowed(struct cpr2_gfx_regulator *cpr_vreg)
 	u32 allow_status = 0;
 
 	if (!of_find_property(of_node, allow_str, &count)) {
-		/* CPR de-aging is not allowed for all fuse revisions. */
+		
 		return allow_status;
 	}
 
 	count /= sizeof(u32);
 	if (cpr_vreg->cpr_fuse_map_count) {
 		if (cpr_vreg->cpr_fuse_map_match == FUSE_MAP_NO_MATCH)
-			/* No matching index to use for CPR de-aging allowed. */
+			
 			return 0;
 		tuple_count = cpr_vreg->cpr_fuse_map_count;
 		tuple_match = cpr_vreg->cpr_fuse_map_match;
@@ -2372,7 +2244,7 @@ static int cpr_aging_init(struct cpr2_gfx_regulator *cpr_vreg)
 	struct cpr2_gfx_aging_sensor_info *sensor_info;
 	int num_corners = cpr_vreg->num_corners;
 	int i, j, rc = 0, len = 0, num_aging_sensors, bits, pos = 0;
-	u32 *aging_sensor_id, *fuse_sel, *fuse_sel_orig;
+	u32 *aging_sensor_id, *fuse_sel, *fuse_sel_orig = NULL;
 	u32 sensor = 0, non_collapsible_sensor_mask = 0;
 	u64 efuse_val;
 	struct property *prop;
@@ -2380,7 +2252,7 @@ static int cpr_aging_init(struct cpr2_gfx_regulator *cpr_vreg)
 	char *buf;
 
 	if (!of_find_property(of_node, "qcom,cpr-aging-sensor-id", &len)) {
-		/* No CPR de-aging adjustments needed */
+		
 		return 0;
 	}
 
@@ -2397,7 +2269,7 @@ static int cpr_aging_init(struct cpr2_gfx_regulator *cpr_vreg)
 			rc);
 		return rc;
 	} else if (rc == 0) {
-		/* CPR de-aging is not allowed for the current fuse combo */
+		
 		return 0;
 	}
 
@@ -2443,7 +2315,7 @@ static int cpr_aging_init(struct cpr2_gfx_regulator *cpr_vreg)
 	if (rc)
 		return rc;
 
-	/* Check for DIV by 0 error */
+	
 	if (aging_info->aging_ro_kv == 0) {
 		cpr_err(cpr_vreg, "invalid cpr-aging-ro-scaling-factor value: %u\n",
 			aging_info->aging_ro_kv);
@@ -2486,10 +2358,6 @@ static int cpr_aging_init(struct cpr2_gfx_regulator *cpr_vreg)
 
 		non_collapsible_sensor_mask |= BIT(sensor);
 
-		/*
-		 * Bypass the sensors in collapsible domain for
-		 * de-aging measurements
-		 */
 		aging_info->aging_sensor_bypass =
 						~(non_collapsible_sensor_mask);
 		cpr_debug(cpr_vreg, "sensor bypass mask for aging = 0x%08x\n",
@@ -2585,10 +2453,6 @@ static int cpr_aging_init(struct cpr2_gfx_regulator *cpr_vreg)
 		fuse_sel += 3;
 	}
 
-	/*
-	 * Log Age adjusted per-virtual corner target quotients since they are
-	 * useful for baseline CPR logging.
-	 */
 	buflen = cpr_vreg->ro_count * (MAX_CHARS_PER_INT + 2) * sizeof(*buf);
 	buf = kzalloc(buflen, GFP_KERNEL);
 	if (buf == NULL) {
@@ -2596,10 +2460,6 @@ static int cpr_aging_init(struct cpr2_gfx_regulator *cpr_vreg)
 		return 0;
 	}
 
-	/*
-	 * Add max aging margin here. This can be adjusted later in
-	 * de-aging algorithm.
-	 */
 	for (i = CPR_CORNER_MIN; i <= num_corners; i++) {
 		pos = 0;
 		for (j = 0; j < cpr_vreg->ro_count; j++) {
@@ -2617,15 +2477,12 @@ static int cpr_aging_init(struct cpr2_gfx_regulator *cpr_vreg)
 	kfree(buf);
 
 err:
-	kfree(fuse_sel_orig);
+	if (fuse_sel_orig)
+		kfree(fuse_sel_orig);
 	kfree(aging_sensor_id);
 	return rc;
 }
 
-/*
- * Conditionally reduce the per-virtual-corner ceiling voltages if certain
- * device tree flags are present.
- */
 static int cpr_reduce_ceiling_voltage(struct cpr2_gfx_regulator *cpr_vreg)
 {
 	int i;
@@ -2719,7 +2576,7 @@ static int cpr_init_cpr_parameters(struct cpr2_gfx_regulator *cpr_vreg)
 	if (rc)
 		return rc;
 
-	/* Init module parameter with the DT value */
+	
 	cpr_vreg->enable = of_property_read_bool(of_node, "qcom,cpr-enable");
 	cpr_info(cpr_vreg, "CPR is %s by default.\n",
 		cpr_vreg->enable ? "enabled" : "disabled");
@@ -2746,40 +2603,40 @@ static int cpr_config(struct cpr2_gfx_regulator *cpr_vreg)
 		return rc;
 	}
 
-	/* Disable interrupt and CPR */
+	
 	cpr_write(cpr_vreg, REG_RBIF_IRQ_EN(cpr_vreg->irq_line), 0);
 	cpr_write(cpr_vreg, REG_RBCPR_CTL, 0);
 
-	/* Program the default HW Ceiling, Floor and vlevel */
+	
 	val = ((RBIF_LIMIT_CEILING_DEFAULT & RBIF_LIMIT_CEILING_MASK)
 			<< RBIF_LIMIT_CEILING_SHIFT)
 		| (RBIF_LIMIT_FLOOR_DEFAULT & RBIF_LIMIT_FLOOR_MASK);
 	cpr_write(cpr_vreg, REG_RBIF_LIMIT, val);
 	cpr_write(cpr_vreg, REG_RBIF_SW_VLEVEL, RBIF_SW_VLEVEL_DEFAULT);
 
-	/* Clear the target quotient value and gate count of all ROs */
+	
 	for (i = 0; i < cpr_vreg->ro_count; i++)
 		cpr_write(cpr_vreg, REG_RBCPR_GCNT_TARGET(i), 0);
 
-	/* Init and save gcnt */
+	
 	gcnt = (cpr_vreg->ref_clk_khz * cpr_vreg->gcnt_time_us) / 1000;
 	gcnt = (gcnt & RBCPR_GCNT_TARGET_GCNT_MASK) <<
 			RBCPR_GCNT_TARGET_GCNT_SHIFT;
 	cpr_vreg->gcnt = gcnt;
 
-	/* Program the delay count for the timer */
+	
 	val = (cpr_vreg->ref_clk_khz * cpr_vreg->timer_delay_us) / 1000;
 	cpr_write(cpr_vreg, REG_RBCPR_TIMER_INTERVAL, val);
 	cpr_info(cpr_vreg, "Timer count: 0x%0x (for %d us)\n", val,
 		cpr_vreg->timer_delay_us);
 
-	/* Program Consecutive Up & Down */
+	
 	val = ((cpr_vreg->timer_cons_down & RBIF_TIMER_ADJ_CONS_DOWN_MASK)
 			<< RBIF_TIMER_ADJ_CONS_DOWN_SHIFT) |
 	       (cpr_vreg->timer_cons_up & RBIF_TIMER_ADJ_CONS_UP_MASK);
 	cpr_write(cpr_vreg, REG_RBIF_TIMER_ADJUST, val);
 
-	/* Program the control register */
+	
 	cpr_vreg->up_threshold &= RBCPR_CTL_UP_THRESHOLD_MASK;
 	cpr_vreg->down_threshold &= RBCPR_CTL_DN_THRESHOLD_MASK;
 	val = (cpr_vreg->up_threshold << RBCPR_CTL_UP_THRESHOLD_SHIFT)
@@ -2836,10 +2693,6 @@ static int cpr_init_cpr(struct platform_device *pdev,
 		return rc;
 	}
 
-	/*
-	 * Read target quotients from global target-quotient table passed
-	 * through device node.
-	 */
 	rc = cpr_init_target_quotients(cpr_vreg);
 	if (rc) {
 		cpr_err(cpr_vreg, "target quotient table read failed, rc=%d\n",
@@ -2853,12 +2706,12 @@ static int cpr_init_cpr(struct platform_device *pdev,
 		return rc;
 	}
 
-	/* Reduce the ceiling voltage if allowed. */
+	
 	rc = cpr_reduce_ceiling_voltage(cpr_vreg);
 	if (rc)
 		return rc;
 
-	/* Init all voltage set points of GFX regulator for CPR */
+	
 	rc = cpr_init_cpr_voltages(cpr_vreg);
 	if (rc) {
 		cpr_err(cpr_vreg, "init closed loop voltages failed, rc=%d\n",
@@ -2866,7 +2719,7 @@ static int cpr_init_cpr(struct platform_device *pdev,
 		return rc;
 	}
 
-	/* Init CPR configuration parameters */
+	
 	rc = cpr_init_cpr_parameters(cpr_vreg);
 	if (rc) {
 		cpr_err(cpr_vreg, "init cpr configuration parameters failed, rc=%d\n",
@@ -2874,14 +2727,14 @@ static int cpr_init_cpr(struct platform_device *pdev,
 		return rc;
 	}
 
-	/* Get and Init interrupt */
+	
 	cpr_vreg->cpr_irq = platform_get_irq(pdev, 0);
 	if (!cpr_vreg->cpr_irq) {
 		cpr_err(cpr_vreg, "missing CPR IRQ\n");
 		return -EINVAL;
 	}
 
-	/* Configure CPR HW but keep it disabled */
+	
 	rc = cpr_config(cpr_vreg);
 	if (rc) {
 		cpr_err(cpr_vreg, "configure CPR HW failed, rc=%d\n", rc);
@@ -3022,7 +2875,7 @@ static ssize_t cpr2_gfx_debug_info_read(struct file *file, char __user *buff,
 		cpr_vreg->corner, cpr_vreg->last_volt[cpr_vreg->corner]);
 	ret += len;
 
-	/* Skip CPR register dump when CPR clocks disabled */
+	
 	if (!cpr_vreg->ctrl_enable)
 		goto _exit;
 
@@ -3326,10 +3179,6 @@ static int cpr2_gfx_regulator_probe(struct platform_device *pdev)
 		goto err_out;
 	}
 
-	/*
-	 * Ensure that enable state accurately reflects the case in which CPR
-	 * is permanently disabled.
-	 */
 	cpr_vreg->enable &= !cpr_vreg->cpr_fuse_disable;
 
 	platform_set_drvdata(pdev, cpr_vreg);
@@ -3368,7 +3217,7 @@ static int cpr2_gfx_regulator_remove(struct platform_device *pdev)
 	struct cpr2_gfx_regulator *cpr_vreg = platform_get_drvdata(pdev);
 
 	if (cpr_vreg) {
-		/* Disable CPR */
+		
 		if (cpr_vreg->ctrl_enable) {
 			cpr_ctl_disable(cpr_vreg);
 			cpr2_gfx_closed_loop_disable(cpr_vreg);

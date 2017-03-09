@@ -65,9 +65,11 @@
 			"MIC BIAS External", "Secondary Mic",
 			"AMIC1", "MIC BIAS External",
 			"AMIC2", "MIC BIAS Internal2",
-			"AMIC3", "MIC BIAS External",
-			"WSA_SPK OUT", "VDD_WSA_SWITCH",
-			"SpkrMono WSA_IN", "WSA_SPK OUT";
+			"AMIC3", "MIC BIAS External";
+//HTC_AUDIO_START
+			//"WSA_SPK OUT", "VDD_WSA_SWITCH",
+			//"SpkrMono WSA_IN", "WSA_SPK OUT";
+//HTC_AUDIO_END
 		qcom,msm-gpios =
 			"pri_i2s";
 		qcom,pinctrl-names =
@@ -115,14 +117,19 @@
 				"msm-dai-q6-dev.32773", "msm-dai-q6-dev.32770";
 		asoc-codec = <&stub_codec>, <&pm8950_cajon_dig>;
 		asoc-codec-names = "msm-stub-codec.1", "cajon_codec";
+//HTC_AUD_START
+/*
 		asoc-wsa-codec-names = "wsa881x-i2c-codec.8-000f";
 		asoc-wsa-codec-prefixes = "SpkrMono";
 
 		msm-vdd-wsa-switch-supply = <&pm8950_l13>;
 		qcom,msm-vdd-wsa-switch-voltage = <3075000>;
 		qcom,msm-vdd-wsa-switch-current = <5000>;
+*/
+//HTC_AUD_END
 	};
-
+//HTC_AUD_START
+/*
 	i2c@7af8000 {
 		wsa881x-i2c-codec@e {
 			compatible = "qcom,wsa881x-i2c-codec";
@@ -198,6 +205,8 @@
 			reg = <0x45>;
 		};
 	};
+*/
+//HTC_AUD_END
 };
 
 &led_flash0{

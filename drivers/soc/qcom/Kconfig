@@ -679,6 +679,11 @@ config KERNEL_TEXT_MPU_PROT
 	  all masters; Write access is only permited to the
 	  secure world.
 
+config MSM_ONTARIO
+	bool "MSM Ontario SenseID clock driver"
+	help
+	  Enables clock and bus for SPI bus communication to SenseID ASIC
+
 config TRACER_PKT
 	bool "Tracer Packet"
 	help
@@ -696,6 +701,12 @@ config MSM_VSENS
 	  crossed.
 
 	  Say yes to support these devices.
+
+config MSM_QBT1000
+	bool "QBT1000 Ultrasonic Fingerprint Sensor"
+	help
+	  This driver is used to enable clocks and marshal buffers for trusted
+	  applications running in the trusted execution environment.
 
 source "drivers/soc/qcom/memshare/Kconfig"
 

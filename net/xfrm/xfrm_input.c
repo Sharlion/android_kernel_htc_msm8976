@@ -1,11 +1,3 @@
-/*
- * xfrm_input.c
- *
- * Changes:
- * 	YOSHIFUJI Hideaki @USAGI
- * 		Split up af-specific portion
- *
- */
 
 #include <linux/slab.h>
 #include <linux/module.h>
@@ -46,7 +38,6 @@ struct sec_path *secpath_dup(struct sec_path *src)
 }
 EXPORT_SYMBOL(secpath_dup);
 
-/* Fetch spi and seq from ipsec header */
 
 int xfrm_parse_spi(struct sk_buff *skb, u8 nexthdr, __be32 *spi, __be32 *seq)
 {
@@ -115,7 +106,7 @@ int xfrm_input(struct sk_buff *skb, int nexthdr, __be32 spi, int encap_type)
 	int decaps = 0;
 	int async = 0;
 
-	/* A negative encap_type indicates async resumption. */
+	
 	if (encap_type < 0) {
 		async = 1;
 		x = xfrm_input_state(skb);
@@ -123,7 +114,7 @@ int xfrm_input(struct sk_buff *skb, int nexthdr, __be32 spi, int encap_type)
 		goto resume;
 	}
 
-	/* Allocate new secpath or COW existing one. */
+	
 	if (!skb->sp || atomic_read(&skb->sp->refcnt) != 1) {
 		struct sec_path *sp;
 
@@ -162,7 +153,12 @@ int xfrm_input(struct sk_buff *skb, int nexthdr, __be32 spi, int encap_type)
 
 		skb->sp->xvec[skb->sp->len++] = x;
 
+#ifdef CONFIG_HTC_NETWORK_MODIFY
+		spin_lock_bh(&x->lock);
+#else
 		spin_lock(&x->lock);
+#endif
+
 		if (unlikely(x->km.state != XFRM_STATE_VALID)) {
 			XFRM_INC_STATS(net, LINUX_MIB_XFRMINSTATEINVALID);
 			goto drop_unlock;
@@ -183,7 +179,11 @@ int xfrm_input(struct sk_buff *skb, int nexthdr, __be32 spi, int encap_type)
 			goto drop_unlock;
 		}
 
+#ifdef CONFIG_HTC_NETWORK_MODIFY
+		spin_unlock_bh(&x->lock);
+#else
 		spin_unlock(&x->lock);
+#endif
 
 		seq_hi = htonl(xfrm_replay_seqhi(x, seq));
 
@@ -198,7 +198,12 @@ int xfrm_input(struct sk_buff *skb, int nexthdr, __be32 spi, int encap_type)
 			return 0;
 
 resume:
+
+#ifdef CONFIG_HTC_NETWORK_MODIFY
+		spin_lock_bh(&x->lock);
+#else
 		spin_lock(&x->lock);
+#endif
 		if (nexthdr <= 0) {
 			if (nexthdr == -EBADMSG) {
 				xfrm_audit_state_icvfail(x, skb,
@@ -209,7 +214,7 @@ resume:
 			goto drop_unlock;
 		}
 
-		/* only the first xfrm gets the encap type */
+		
 		encap_type = 0;
 
 		if (async && x->repl->recheck(x, skb, seq)) {
@@ -222,7 +227,11 @@ resume:
 		x->curlft.bytes += skb->len;
 		x->curlft.packets++;
 
+#ifdef CONFIG_HTC_NETWORK_MODIFY
+		spin_unlock_bh(&x->lock);
+#else
 		spin_unlock(&x->lock);
+#endif
 
 		XFRM_MODE_SKB_CB(skb)->protocol = nexthdr;
 
@@ -244,10 +253,6 @@ resume:
 			break;
 		}
 
-		/*
-		 * We need the inner address.  However, we only get here for
-		 * transport mode so the outer address is identical.
-		 */
 		daddr = &x->id.daddr;
 		family = x->outer_mode->afinfo->family;
 
@@ -269,7 +274,13 @@ resume:
 	}
 
 drop_unlock:
+
+#ifdef CONFIG_HTC_NETWORK_MODIFY
+	spin_unlock_bh(&x->lock);
+#else
 	spin_unlock(&x->lock);
+#endif
+
 drop:
 	kfree_skb(skb);
 	return 0;

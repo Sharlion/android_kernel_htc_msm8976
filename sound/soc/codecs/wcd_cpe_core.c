@@ -889,14 +889,7 @@ static int wcd_cpe_enable(struct wcd_cpe_core *core,
 			 * instead SSR handler will control CPE.
 			 */
 			wcd_cpe_enable_cpe_clks(core, false);
-			/*
-			 * During BUS_DOWN event, possibly the
-			 * irq driver is under cleanup, do not request
-			 * cleanup of irqs here, rather cleanup irqs
-			 * once BUS_UP event is received.
-			 */
-			if (core->ssr_type != WCD_CPE_BUS_DOWN_EVENT)
-				wcd_cpe_cleanup_irqs(core);
+			wcd_cpe_cleanup_irqs(core);
 			goto done;
 		}
 
@@ -1147,7 +1140,6 @@ int wcd_cpe_ssr_event(void *core_handle,
 		break;
 
 	case WCD_CPE_BUS_UP_EVENT:
-		wcd_cpe_cleanup_irqs(core);
 		wcd_cpe_set_and_complete(core, WCD_CPE_BUS_READY);
 		/*
 		 * In case of bus up event ssr_type will be changed
@@ -1681,7 +1673,7 @@ done:
 
 static int wcd_cpe_debugfs_init(struct wcd_cpe_core *core)
 {
-	int rc;
+	int rc = 0; //htc audio
 
 	struct dentry *dir = debugfs_create_dir("wcd_cpe", NULL);
 	if (IS_ERR_OR_NULL(dir)) {
@@ -4309,7 +4301,7 @@ done:
  *	      parameters are to be set
  */
 static int wcd_cpe_afe_set_params(void *core_handle,
-		struct wcd_cpe_afe_port_cfg *afe_cfg, bool afe_mad_ctl)
+		struct wcd_cpe_afe_port_cfg *afe_cfg)
 {
 	struct cpe_afe_params afe_params;
 	struct cpe_afe_hw_mad_ctrl *hw_mad_ctrl = &afe_params.hw_mad_ctrl;
@@ -4352,7 +4344,7 @@ static int wcd_cpe_afe_set_params(void *core_handle,
 	hw_mad_ctrl->param.p_size.sr.reserved = 0;
 	hw_mad_ctrl->minor_version = 1;
 	hw_mad_ctrl->mad_type = MAD_TYPE_AUDIO;
-	hw_mad_ctrl->mad_enable = afe_mad_ctl;
+	hw_mad_ctrl->mad_enable = 1;
 
 	port_cfg->param.module_id = CPE_AFE_MODULE_AUDIO_DEV_INTERFACE;
 	port_cfg->param.param_id = CPE_AFE_PARAM_ID_GENERIC_PORT_CONFIG;

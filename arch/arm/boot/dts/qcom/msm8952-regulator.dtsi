@@ -25,6 +25,7 @@
 	/* PM8950 S2 - VDD_CX supply */
 	rpm-regulator-smpa2 {
 		status = "okay";
+
 		pm8950_s2_level: regulator-s2-level {
 			compatible = "qcom,rpm-smd-regulator";
 			regulator-name = "pm8950_s2_level";
@@ -87,6 +88,7 @@
 	/* VDD_MX supply */
 	rpm-regulator-ldoa3 {
 		status = "okay";
+
 		pm8950_l3_level_ao: regulator-l3-level-ao {
 			compatible = "qcom,rpm-smd-regulator";
 			regulator-name = "pm8950_l3_level_ao";
@@ -125,6 +127,7 @@
 			regulator-max-microvolt = <1800000>;
 			qcom,init-voltage = <1800000>;
 			status = "okay";
+			regulator-always-on;
 		};
 	};
 
@@ -154,6 +157,7 @@
 			regulator-max-microvolt = <2900000>;
 			qcom,init-voltage = <2900000>;
 			status = "okay";
+			regulator-always-on;
 		};
 	};
 
@@ -170,10 +174,11 @@
 	rpm-regulator-ldoa10 {
 		status = "okay";
 		pm8950_l10: regulator-l10 {
-			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <2800000>;
-			qcom,init-voltage = <2800000>;
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+			qcom,init-voltage = <3000000>;
 			status = "okay";
+			regulator-always-on;
 		};
 	};
 
@@ -240,9 +245,9 @@
 	rpm-regulator-ldoa17 {
 		status = "okay";
 		pm8950_l17: regulator-l17 {
-			regulator-min-microvolt = <2850000>;
-			regulator-max-microvolt = <2850000>;
-			qcom,init-voltage = <2850000>;
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+			qcom,init-voltage = <3000000>;
 			status = "okay";
 		};
 	};
@@ -260,10 +265,11 @@
 	rpm-regulator-ldoa22 {
 		status = "okay";
 		pm8950_l22: regulator-l22 {
-			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <2800000>;
-			qcom,init-voltage = <2800000>;
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			qcom,init-voltage = <1800000>;
 			status = "okay";
+/*            regulator-always-on;*/
 		};
 	};
 
@@ -434,8 +440,8 @@
 			<0  0     0>;
 		qcom,cpr-quotient-adjustment =
 			<0 (-132) (-132)>, /* NOM - 80mv, TURBO - 80mv */
-			<0    0       17>, /* TURBO + 10mv */
-			<0    42      66>, /* NOM + 25mv, TURBO + 40mv */
+			<82    0       17>, /* SVS/SVSP + 50mv, TURBO + 10mv */
+			<82    42      66>, /* SVS/SVSP + 50mv, NOM + 25mv, TURBO + 40mv */
 			<0    16      74>, /* NOM + 10mv, TURBO + 45mv */
 			<0    16      33>, /* NOM + 10mv, TURBO + 20mv */
 			<0    0        0>;

@@ -69,6 +69,26 @@ config TEST_POWER
 	help
 	  This driver is used for testing. It's safe to say M here.
 
+config HTC_BATT_CORE
+	depends on POWER_SUPPLY
+	default n
+	bool "HTC battery core driver"
+
+config HTC_BATT_8960
+	depends on HTC_BATT_CORE
+	default n
+	bool "HTC battery driver for 8960"
+
+config HTC_CHARGER
+	bool "HTC Charger Feature"
+	help
+	  Say Y to enable htc charger features
+
+config MACH_PMEC2
+        depends on POWER_SUPPLY
+        default n
+        bool "HTC battery driver setting for MSM8976"
+
 config BATTERY_88PM860X
 	tristate "Marvell 88PM860x battery driver"
 	depends on MFD_88PM860X

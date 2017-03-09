@@ -1,0 +1,80 @@
+/* 8976 HTC Charger Config */
+
+// ================
+//  CHARGER DRIVER
+// ================
+
+&pm8950_mpps {
+	mpp@a100 { /*MPP 2*/
+		reg = <0xa100 0x100>;
+		qcom,pin-num = <2>;
+		qcom,mode = <4>;                /* QPNP_PIN_MODE_AIN */
+		qcom,vin-sel = <2>;             /* S4 1.8V */
+		qcom,src-sel = <0>;             /* Constant */
+		qcom,master-en = <1>;           /* Enable MPP */
+		qcom,ain-route = <1>;  /* QPNP_PIN_AIN_AMUX_CH6 */
+		status = "okay";
+	};
+};
+
+&pm8950_vadc {
+	chan@11 {
+		label = "mpp2_div1";
+		reg = <0x11>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <1>;
+		qcom,fast-avg-setup = <2>;
+	};
+};
+
+&pm8950_gpios {
+	gpio@c100 {
+		reg = <0xc100 0x100>;
+		qcom,pin-num = <2>;
+		qcom,mode = <1>;	/* DIGITAL OUT */
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <3>;	/* 1.8 */
+		qcom,out-strength = <3>;
+    qcom,output-type = <0>;
+		qcom,src-sel = <0>;	/* CONSTANT */
+		qcom,master-en = <1>;	/* ENABLE GPIO */
+		status = "okay";
+	};
+
+  gpio@c400 {
+		reg = <0xc400 0x100>;
+ 		qcom,pin-num = <5>;
+		qcom,mode = <1>;	/* DIGITAL OUT */
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <3>;	/* 1.8 */
+		qcom,out-strength = <3>;
+    qcom,output-type = <0>;
+		qcom,src-sel = <0>;	/* CONSTANT */
+		qcom,master-en = <1>;	/* ENABLE GPIO */
+    status = "okay";
+  };
+};
+
+&soc {
+	htc,htc-charger {
+		compatible = "htc,htc-charger";
+		qcom,charger-enable-gpio  = <&pm8950_gpios 2 0>;
+		qcom,adc-sw-sel-gpio = <&pm8950_gpios 5 0>;
+		qcom,usb_in_isen-vadc = <&pm8950_vadc>;
+		qcom,usb_in_isen-channel = <0x11>; //MPP2
+		qcom,vbusdet-vadc = <&pm8950_vadc>;
+		qcom,vbusdet-channel = <0x11>;
+
+		pinctrl-names = "htcchg_gpio_init";
+		pinctrl-0 = <&htc_chg_init>;
+
+		iusb_rsen = <732>;
+		iusb_multiplier = <2050>;
+
+		run_mode = <0>;
+	};
+};
+

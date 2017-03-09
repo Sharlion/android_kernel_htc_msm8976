@@ -319,7 +319,7 @@ static int read_platform_resources(struct msm_vidc_core *core,
 
 	core->resources.pdev = pdev;
 	if (pdev->dev.of_node) {
-		/* Target supports DT, parse from it */
+		
 		return read_platform_resources_from_dt(&core->resources);
 	} else {
 		dprintk(VIDC_ERR, "pdev node is NULL\n");
@@ -639,7 +639,7 @@ static int msm_vidc_probe(struct platform_device *pdev)
 			u32 efuse = 0;
 
 			efuse = readl_relaxed(base);
-			/* BIT[30, 29] will give the version info */
+			
 			vidc_driver->version =
 				(efuse & version_mask) >> version_shift;
 			dprintk(VIDC_DBG, "efuse version 0x%x\n",

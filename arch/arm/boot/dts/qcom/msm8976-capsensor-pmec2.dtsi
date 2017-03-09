@@ -1,0 +1,93 @@
+#include <dt-bindings/input/input.h>
+
+&soc {
+	tlmm_pinmux: pinctrl@1000000 {
+		pmx_cap_intr:pmx_cap_intr {
+			qcom,pins = <&gp 65>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "pmx_cap_intr";
+
+			cap_intr_active: cap_intr_active {
+				drive-strength = <2>;
+				bias-disable;
+			};
+			cap_intr_suspend: cap_intr_suspend {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		pmx_cap_rst:pmx_cap_rst {
+			qcom,pins = <&gp 63>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "pmx_cap_rst";
+
+			cap_rst_active: cap_rst_active {
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
+			cap_rst_suspend: cap_rst_suspend {
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
+		};
+
+		pmx_cap_ind:pmx_cap_ind {
+			qcom,pins = <&gp 64>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "pmx_cap_ind";
+
+			cap_ind_active: cap_ind_active {
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
+			cap_ind_suspend: cap_ind_suspend {
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
+		};
+	};
+};
+
+&i2c_2 {
+	cypress_fw_update@62 {
+		compatible = "cypress_fw_update";
+		reg = <0x62>;
+	};
+
+	cypress_cy8c4014@64 {
+		compatible = "cypress_cap";
+		reg = <0x64>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <65 0>;
+		cap-sensor-irq = <&msm_gpio 65 0x00>;
+		cap-sensor-rst = <&msm_gpio 63 0x00>;
+		cap-sensor-ind = <&msm_gpio 64 0x00>;
+		cap-sensor-power = <&msm_gpio 0 0x00>;
+		cap-sensor-3v3 = <&msm_gpio 102 0x00>;
+		cap-num = <2>;
+		raw-cap = <2>;
+		project-id = <0x10>;
+		update-feature = <1>;
+		pinctrl-names = "pmx_cap_active", "pmx_cap_suspend";
+		pinctrl-0 = <&cap_intr_active &cap_rst_active &cap_ind_active>;
+		pinctrl-1 = <&cap_intr_suspend &cap_rst_suspend &cap_ind_suspend>;
+
+		cap-0{
+			cap-id = <0>;
+			keycode = <KEY_APPSELECT>;
+		};
+		cap-1{
+			cap-id = <1>;
+			keycode = <KEY_BACK>;
+		};
+	};
+};
+

@@ -1,0 +1,31 @@
+&spmi_bus {
+
+	qcom,pm8950@0 {
+		pm8950_mpps: mpps {
+			mpp@a300 {
+				/* MPP4 - msm8976 CASE_THERM config */
+				reg = <0xa300 0x100>;
+				qcom,pin-num = <4>;
+				qcom,mode = <4>; /* AIN input */
+				qcom,ain-route = <3>; /* AMUX 8 */
+				qcom,master-en = <1>; /* Enable MPP */
+				qcom,src-sel = <0>; /* Function constant */
+				status= "ok";
+			};
+		};
+
+		pm8950_vadc: vadc@3100 {
+			chan@13 {
+				label = "case_therm";
+				reg = <0x13>;
+				qcom,decimation = <0>;
+				qcom,pre-div-channel-scaling = <0>;
+				qcom,calibration-type = "ratiometric";
+				qcom,scale-function = <2>;
+				qcom,hw-settle-time = <2>;
+				qcom,fast-avg-setup = <0>;
+				qcom,vadc-thermal-node;
+			};
+		};
+	};
+};

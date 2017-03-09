@@ -217,6 +217,7 @@ struct msm_mdp_interface {
 	int (*splash_init_fnc)(struct msm_fb_data_type *mfd);
 	struct msm_sync_pt_data *(*get_sync_fnc)(struct msm_fb_data_type *mfd,
 				const struct mdp_buf_sync *buf_sync);
+	void (*display_on)(struct msm_fb_data_type *mfd);
 	void (*check_dsi_status)(struct work_struct *work, uint32_t interval);
 	int (*configure_panel)(struct msm_fb_data_type *mfd, int mode,
 				int dest_ctrl);
@@ -273,6 +274,7 @@ struct msm_fb_data_type {
 
 	u32 dst_format;
 	int panel_power_state;
+	int request_display_on;
 	struct disp_info_type_suspend suspend;
 
 	struct ion_handle *ihdl;
@@ -291,7 +293,7 @@ struct msm_fb_data_type {
 	u32 bl_scale;
 	u32 bl_min_lvl;
 	u32 unset_bl_level;
-	bool allow_bl_update;
+	u32 bl_updated;
 	u32 bl_level_scaled;
 	struct mutex bl_lock;
 
@@ -418,4 +420,5 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 int mdss_fb_compat_ioctl(struct fb_info *info, unsigned int cmd,
 			 unsigned long arg);
 void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd);
+#define DEFAULT_BRIGHTNESS 143
 #endif /* MDSS_FB_H */

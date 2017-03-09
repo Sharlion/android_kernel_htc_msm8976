@@ -58,6 +58,9 @@ struct msm_ois_ctrl_t {
 	uint32_t subdev_id;
 	enum msm_ois_state_t ois_state;
 	struct msm_ois_vreg vreg_cfg;
+	
+	uint8_t highlvcmd_check;
+	
 };
 
 #endif

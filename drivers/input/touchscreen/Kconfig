@@ -12,6 +12,7 @@ menuconfig INPUT_TOUCHSCREEN
 if INPUT_TOUCHSCREEN
 
 source "drivers/input/touchscreen/synaptics_dsx/Kconfig"
+source "drivers/input/touchscreen/synaptics_dsx_htc/Kconfig"
 
 config TOUCHSCREEN_88PM860X
 	tristate "Marvell 88PM860x touchscreen"
@@ -149,6 +150,22 @@ config TOUCHSCREEN_CY8CTMG110
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called cy8ctmg110_ts.
+
+config TOUCHSCREEN_CYPRESS_CAP
+        tristate "Cypress Cap sensor"
+        depends on I2C
+        default n
+        help
+          Say Y here if you have cap sensor on your device
+          If unsure, say N.
+
+config TOUCHSCREEN_CAPSENSOR_FW_UPDATE
+        tristate "Capsensor firmware update"
+        default y
+        help
+          Say Y here to support cap firmware update
+
+          If unsure, say N.
 
 config TOUCHSCREEN_CYTTSP_CORE
 	tristate "Cypress TTSP touchscreen"
@@ -1039,6 +1056,14 @@ config TOUCHSCREEN_GT9XX
           If unsure, say N.
 
 source "drivers/input/touchscreen/gt9xx/Kconfig"
+
+config TOUCHSCREEN_TOUCH_FW_UPDATE
+        tristate "Touchscreen firmware update"
+        default y
+        help
+          Say Y here to support touch firmware update
+
+          If unsure, say N.
 
 config TOUCHSCREEN_BU21150
 	tristate "JDI AFE BU21150"

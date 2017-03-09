@@ -20,6 +20,34 @@
 
 #include <asm/uaccess.h>
 
+
+int vfs_readdir(struct file *file, filldir_t filler, void *buf)
+{
+	struct inode *inode = file_inode(file);
+	int res = -ENOTDIR;
+	if (!file->f_op || !file->f_op->readdir)
+		goto out;
+
+	res = security_file_permission(file, MAY_READ);
+	if (res)
+		goto out;
+
+	res = mutex_lock_killable(&inode->i_mutex);
+	if (res)
+		goto out;
+
+	res = -ENOENT;
+	if (!IS_DEADDIR(inode)) {
+		res = file->f_op->readdir(file, buf, filler);
+		file_accessed(file);
+	}
+	mutex_unlock(&inode->i_mutex);
+out:
+	return res;
+}
+
+EXPORT_SYMBOL(vfs_readdir);
+
 int iterate_dir(struct file *file, struct dir_context *ctx)
 {
 	struct inode *inode = file_inode(file);
@@ -53,14 +81,6 @@ out:
 }
 EXPORT_SYMBOL(iterate_dir);
 
-/*
- * Traditional linux readdir() handling..
- *
- * "count=1" is a special case, meaning that the buffer is one
- * dirent-structure in size and that the code can't handle more
- * anyway. Thus the special "fillonedir()" function for that
- * case (the low-level handlers don't need to care about this).
- */
 
 #ifdef __ARCH_WANT_OLD_READDIR
 
@@ -130,12 +150,8 @@ SYSCALL_DEFINE3(old_readdir, unsigned int, fd,
 	return error;
 }
 
-#endif /* __ARCH_WANT_OLD_READDIR */
+#endif 
 
-/*
- * New, all-improved, singing, dancing, iBCS2-compliant getdents()
- * interface. 
- */
 struct linux_dirent {
 	unsigned long	d_ino;
 	unsigned long	d_off;
@@ -160,7 +176,7 @@ static int filldir(void * __buf, const char * name, int namlen, loff_t offset,
 	int reclen = ALIGN(offsetof(struct linux_dirent, d_name) + namlen + 2,
 		sizeof(long));
 
-	buf->error = -EINVAL;	/* only used if we fail.. */
+	buf->error = -EINVAL;	
 	if (reclen > buf->count)
 		return -EINVAL;
 	d_ino = ino;
@@ -243,7 +259,7 @@ static int filldir64(void * __buf, const char * name, int namlen, loff_t offset,
 	int reclen = ALIGN(offsetof(struct linux_dirent64, d_name) + namlen + 1,
 		sizeof(u64));
 
-	buf->error = -EINVAL;	/* only used if we fail.. */
+	buf->error = -EINVAL;	
 	if (reclen > buf->count)
 		return -EINVAL;
 	dirent = buf->previous;

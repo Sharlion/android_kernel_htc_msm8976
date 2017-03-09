@@ -118,20 +118,26 @@ int dma_alloc_from_coherent(struct device *dev, ssize_t size,
 	int order = get_order(size);
 	int pageno;
 
-	if (!dev)
+	if (!dev) {
+		printk("%s: dev == NULL\n", __func__);
 		return 0;
+	}
 	mem = dev->dma_mem;
 	if (!mem)
 		return 0;
 
 	*ret = NULL;
 
-	if (unlikely(size > (mem->size << PAGE_SHIFT)))
+	if (unlikely(size > (mem->size << PAGE_SHIFT))) {
+		printk("%s: size > (mem->size << PAGE_SHIFT)\n", __func__);
 		goto err;
+	}
 
 	pageno = bitmap_find_free_region(mem->bitmap, mem->size, order);
-	if (unlikely(pageno < 0))
+	if (unlikely(pageno < 0)) {
+		printk("%s: pageno < 0\n", __func__);
 		goto err;
+	}
 
 	/*
 	 * Memory was found in the per-device area.

@@ -1,8 +1,3 @@
-/*
- * Implementation of the hash table type.
- *
- * Author : Stephen Smalley, <sds@epoch.ncsc.mil>
- */
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/errno.h>
@@ -76,7 +71,7 @@ void *hashtab_search(struct hashtab *h, const void *key)
 	u32 hvalue;
 	struct hashtab_node *cur;
 
-	if (!h)
+	if (!h || !key)
 		return NULL;
 
 	hvalue = h->hash_value(h, key);

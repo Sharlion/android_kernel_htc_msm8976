@@ -1,0 +1,51 @@
+config HTC_RADIO_SMEM
+	bool "RADIO SMEM"
+	default N
+	---help---
+	Enable to move necessary non-secure data to shared memory
+
+config HTC_MODEM_NOTIFIER
+	bool "MODEM NOTIFIER"
+	default N
+	---help---
+	Enable to notify modem APP is rebooting
+
+config HTC_GARBAGE_FILTER
+	tristate "HTC_GARBAGE_FILTER"
+	default n
+	depends on MSM_SMD
+	---help---
+	  HTC Garbage Filter of TCP
+
+config HTC_DEBUG_RIL_PCN0005_HTC_DUMP_SMSM_LOG
+    tristate "HTC_DEBUG_RIL_PCN0005_HTC_DUMP_SMSM_LOG"
+    default y
+    depends on MSM_SMD
+    ---help---
+      Dump SMSM log message
+
+config HTC_DEBUG_RIL_PCN0010_HTC_DUMP_IPCROUTER_LOG
+    tristate "HTC_DEBUG_RIL_PCN0010_HTC_DUMP_IPCROUTER_LOG"
+    default y
+    depends on IPC_ROUTER
+    ---help---
+      Dump IPC router modem log message
+
+config HTC_DEBUG_RIL_PCN0011_HTC_DUMP_IPC_UNREAD_PACKAGE
+    tristate "HTC_DEBUG_RIL_PCN0011_HTC_DUMP_IPC_UNREAD_PACKAGE"
+    default y
+    depends on IPC_ROUTER
+    ---help---
+      Dump IPC router unread package
+
+config HTC_DEBUG_RIL_PCN0012_HTC_NET_MONITOR
+    tristate "HTC_DEBUG_RIL_PCN0012_HTC_NET_MONITOR"
+    default y
+    ---help---
+      Dump net package information
+
+config HTC_DEBUG_RIL_PCN0013_HTC_SYC_QCT_SOLUTION_USE_BITMAP_FOR_WAKELOCK_REF_COUN
+    tristate "HTC_DEBUG_RIL_PCN0013_HTC_SYC_QCT_SOLUTION_USE_BITMAP_FOR_WAKELOCK_REF_COUN"
+    default y
+    ---help---
+      Sync from 8996 to fix IPA_WS wakelock

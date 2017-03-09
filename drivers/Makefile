@@ -170,3 +170,13 @@ obj-$(CONFIG_ESOC)		+= esoc/
 obj-$(CONFIG_BIF)		+= bif/
 obj-$(CONFIG_SENSORS)		+= sensors/
 obj-$(CONFIG_SENSORS_SSC)	+= sensors/
+#HTC Debug
+obj-$(CONFIG_HTC_DEBUG_FOOTPRINT)	+= htc_mnemosyne/
+obj-y				+= htc_debug/
+obj-y += htc_ril/
+
+#HTC Security
+obj-$(CONFIG_HTC_MSM_SERIAL)    += htc_msm_serial/
+
+#HTC LogLevel
+obj-$(CONFIG_HTC_LOGLEVEL)      += htc_loglevel/

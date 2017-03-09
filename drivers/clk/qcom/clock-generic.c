@@ -19,8 +19,10 @@
 #include <linux/clk/msm-clk-provider.h>
 #include <linux/clk/msm-clock-generic.h>
 #include <soc/qcom/msm-clock-controller.h>
+#if defined(CONFIG_HTC_DEBUG_FOOTPRINT)
+#include <htc_mnemosyne/htc_footprint.h>
+#endif
 
-/* ==================== Mux clock ==================== */
 
 static int mux_parent_to_src_sel(struct mux_clk *mux, struct clk *p)
 {
@@ -39,10 +41,6 @@ static int mux_set_parent(struct clk *c, struct clk *p)
 		for (i = 0; i < mux->num_rec_parents; i++) {
 			rc = clk_set_parent(mux->rec_parents[i], p);
 			if (!rc) {
-				/*
-				 * This is necessary to ensure prepare/enable
-				 * counts get propagated correctly.
-				 */
 				p = mux->rec_parents[i];
 				sel = mux_parent_to_src_sel(mux, p);
 				break;
@@ -99,10 +97,6 @@ static int mux_set_rate(struct clk *c, unsigned long rate)
 	unsigned long new_par_curr_rate;
 	unsigned long flags;
 
-	/*
-	 * Check if one of the possible parents is already at the requested
-	 * rate.
-	 */
 	for (i = 0; i < mux->num_parents && mux->try_get_rate; i++) {
 		struct clk *p = mux->parents[i].src;
 		if (p->rate == rate && clk_round_rate(p, rate) == rate) {
@@ -124,19 +118,8 @@ static int mux_set_rate(struct clk *c, unsigned long rate)
 	if (new_parent == NULL)
 		return -EINVAL;
 
-	/*
-	 * Switch to safe parent since the old and new parent might be the
-	 * same and the parent might temporarily turn off while switching
-	 * rates. If the mux can switch between distinct sources safely
-	 * (indicated by try_new_parent), and the new source is not the current
-	 * parent, do not switch to the safe parent.
-	 */
 	if (mux->safe_sel >= 0 &&
 		!(mux->try_new_parent && (new_parent != c->parent))) {
-		/*
-		 * The safe parent might be a clock with multiple sources;
-		 * to select the "safe" source, set a safe frequency.
-		 */
 		if (mux->safe_freq) {
 			rc = clk_set_rate(mux->safe_parent, mux->safe_freq);
 			if (rc) {
@@ -146,11 +129,6 @@ static int mux_set_rate(struct clk *c, unsigned long rate)
 			}
 		}
 
-		/*
-		 * Some mux implementations might switch to/from a low power
-		 * parent as part of their disable/enable ops. Grab the
-		 * enable lock to avoid racing with these implementations.
-		 */
 		spin_lock_irqsave(&c->lock, flags);
 		rc = mux->ops->set_mux_sel(mux, mux->safe_sel);
 		spin_unlock_irqrestore(&c->lock, flags);
@@ -205,7 +183,7 @@ static struct clk *mux_get_parent(struct clk *c)
 			return mux->parents[i].src;
 	}
 
-	/* Unfamiliar parent. */
+	
 	return NULL;
 }
 
@@ -221,15 +199,6 @@ static enum handoff mux_handoff(struct clk *c)
 			? HANDOFF_ENABLED_CLK
 			: HANDOFF_DISABLED_CLK;
 
-	/*
-	 * If this function returns 'enabled' even when the clock downstream
-	 * of this clock is disabled, then handoff code will unnecessarily
-	 * enable the current parent of this clock. If this function always
-	 * returns 'disabled' and a clock downstream is on, the clock handoff
-	 * code will bump up the ref count for this clock and its current
-	 * parent as necessary. So, clocks without an actual HW gate can
-	 * always return disabled.
-	 */
 	return HANDOFF_DISABLED_CLK;
 }
 
@@ -255,7 +224,6 @@ struct clk_ops clk_ops_gen_mux = {
 	.list_registers = mux_clk_list_registers,
 };
 
-/* ==================== Divider clock ==================== */
 
 static long __div_round_rate(struct div_data *data, unsigned long rate,
 	struct clk *parent, unsigned int *best_div, unsigned long *best_prate)
@@ -269,10 +237,6 @@ static long __div_round_rate(struct div_data *data, unsigned long rate,
 	min_div = max(data->min_div, 1U);
 	max_div = min(data->max_div, (unsigned int) (ULONG_MAX / rate));
 
-	/*
-	 * div values are doubled for half dividers.
-	 * Adjust for that by picking a numer of 2.
-	 */
 	numer = data->is_half_divider ? 2 : 1;
 
 	for (div = min_div; div <= max_div; div++) {
@@ -290,13 +254,6 @@ static long __div_round_rate(struct div_data *data, unsigned long rate,
 			_best_prate = prate;
 		}
 
-		/*
-		 * Trying higher dividers is only going to ask the parent for
-		 * a higher rate. If it can't even output a rate higher than
-		 * the one we request for this divider, the parent is not
-		 * going to be able to output an even higher rate required
-		 * for a higher divider. So, stop trying higher dividers.
-		 */
 		if (actual_rate < rate)
 			break;
 
@@ -332,7 +289,7 @@ static int _find_safe_div(struct clk *c, unsigned long rate)
 	if (!d->safe_freq)
 		return 0;
 
-	/* Find the max safe freq that is lesser than fast */
+	
 	for (i = data->max_div; i >= data->min_div; i--)
 		if (mult_frac(d->safe_freq, numer, i) <= fast)
 			safe_div = i;
@@ -351,12 +308,6 @@ static int div_set_rate(struct clk *c, unsigned long rate)
 	if (rrate != rate)
 		return -EINVAL;
 
-	/*
-	 * For fixed divider clock we don't want to return an error if the
-	 * requested rate matches the achievable rate. So, don't check for
-	 * !d->ops and return an error. __div_round_rate() ensures div ==
-	 * d->div if !d->ops.
-	 */
 
 	safe_div = _find_safe_div(c, rate);
 	if (d->safe_freq && safe_div < 0) {
@@ -437,15 +388,6 @@ static enum handoff div_handoff(struct clk *c)
 			? HANDOFF_ENABLED_CLK
 			: HANDOFF_DISABLED_CLK;
 
-	/*
-	 * If this function returns 'enabled' even when the clock downstream
-	 * of this clock is disabled, then handoff code will unnecessarily
-	 * enable the current parent of this clock. If this function always
-	 * returns 'disabled' and a clock downstream is on, the clock handoff
-	 * code will bump up the ref count for this clock and its current
-	 * parent as necessary. So, clocks without an actual HW gate can
-	 * always return disabled.
-	 */
 	return HANDOFF_DISABLED_CLK;
 }
 
@@ -509,12 +451,6 @@ static int slave_div_set_rate(struct clk *c, unsigned long rate)
 	if (div == d->data.div)
 		return 0;
 
-	/*
-	 * For fixed divider clock we don't want to return an error if the
-	 * requested rate matches the achievable rate. So, don't check for
-	 * !d->ops and return an error. __slave_div_round_rate() ensures
-	 * div == d->data.div if !d->ops.
-	 */
 	rc = d->ops->set_div(d, div);
 	if (rc)
 		return rc;
@@ -543,16 +479,6 @@ struct clk_ops clk_ops_slave_div = {
 };
 
 
-/**
- * External clock
- * Some clock controllers have input clock signal that come from outside the
- * clock controller. That input clock signal might then be used as a source for
- * several clocks inside the clock controller. This external clock
- * implementation models this input clock signal by just passing on the requests
- * to the clock's parent, the original external clock source. The driver for the
- * clock controller should clk_get() the original external clock in the probe
- * function and set is as a parent to this external clock..
- */
 
 long parent_round_rate(struct clk *c, unsigned long rate)
 {
@@ -586,7 +512,7 @@ static struct clk *ext_get_parent(struct clk *c)
 static enum handoff ext_handoff(struct clk *c)
 {
 	c->rate = clk_get_rate(c->parent);
-	/* Similar reasoning applied in div_handoff, see comment there. */
+	
 	return HANDOFF_DISABLED_CLK;
 }
 
@@ -621,7 +547,6 @@ static void *ext_clk_dt_parser(struct device *dev, struct device_node *np)
 }
 MSMCLK_PARSER(ext_clk_dt_parser, "qcom,ext-clk", 0);
 
-/* ==================== Mux_div clock ==================== */
 
 static int mux_div_clk_enable(struct clk *c)
 {
@@ -683,16 +608,11 @@ static long mux_div_clk_round_rate(struct clk *c, unsigned long rate)
 	return __mux_div_round_rate(c, rate, NULL, NULL, NULL);
 }
 
-/* requires enable lock to be held */
 static int __set_src_div(struct mux_div_clk *md, struct clk *parent, u32 div)
 {
 	u32 rc = 0, src_sel;
 
 	src_sel = parent_to_src_sel(md->parents, md->num_parents, parent);
-	/*
-	 * If the clock is disabled, don't change to the new settings until
-	 * the clock is reenabled
-	 */
 	if (md->c.count)
 		rc = md->ops->set_src_div(md, src_sel, div);
 	if (!rc) {
@@ -715,7 +635,6 @@ static int set_src_div(struct mux_div_clk *md, struct clk *parent, u32 div)
 	return rc;
 }
 
-/* Must be called after handoff to ensure parent clock rates are initialized */
 static int safe_parent_init_once(struct clk *c)
 {
 	unsigned long rrate;
@@ -726,9 +645,6 @@ static int safe_parent_init_once(struct clk *c)
 	if (IS_ERR(md->safe_parent))
 		return -EINVAL;
 
-	 /*
-	  * Update safe_div and safe_parent if there is a valid new safe_freq
-	  */
 	if (!md->safe_freq)
 		return 0;
 
@@ -764,13 +680,16 @@ static int mux_div_clk_set_rate(struct clk *c, unsigned long rate)
 				(md->safe_freqs[i] < max_safe_freq))
 				break;
 		}
-		/* Move to the new safe frequency */
+		
 		if (i >= 0) {
 			old_safe_freq = md->safe_freq;
 			md->safe_freq = md->safe_freqs[i];
 		}
 	}
 
+#if defined(CONFIG_HTC_DEBUG_FOOTPRINT)
+	set_acpuclk_footprint_by_clk(c, ACPU_BEFORE_SAFE_PARENT_INIT);
+#endif
 	rc = safe_parent_init_once(c);
 	if (rc)
 		return rc;
@@ -783,9 +702,12 @@ static int mux_div_clk_set_rate(struct clk *c, unsigned long rate)
 	old_parent = c->parent;
 	old_div = md->data.div;
 
-	/* Refer to the description of safe_freq in clock-generic.h */
+#if defined(CONFIG_HTC_DEBUG_FOOTPRINT)
+	set_acpuclk_footprint_by_clk(c, ACPU_BEFORE_SET_SAFE_RATE);
+#endif
+	
 	if (md->safe_freq) {
-		/* enable the aux clock safe parent before setting div */
+		
 		rc = clk_prepare_enable(md->safe_parent);
 		if (rc) {
 			pr_err("failed to prepare enable %s\n",
@@ -795,15 +717,13 @@ static int mux_div_clk_set_rate(struct clk *c, unsigned long rate)
 		rc = set_src_div(md, md->safe_parent, md->safe_div);
 
 	} else if (new_parent == old_parent && new_div >= old_div) {
-		/*
-		 * If both the parent_rate and divider changes, there may be an
-		 * intermediate frequency generated. Ensure this intermediate
-		 * frequency is less than both the new rate and previous rate.
-		 */
 		rc = set_src_div(md, old_parent, new_div);
 	}
 	if (rc)
 		return rc;
+#if defined(CONFIG_HTC_DEBUG_FOOTPRINT)
+	set_acpuclk_footprint_by_clk(c, ACPU_BEFORE_SET_PARENT_RATE);
+#endif
 
 	new_parent_orig_rate = clk_get_rate(new_parent);
 	rc = clk_set_rate(new_parent, new_prate);
@@ -813,38 +733,65 @@ static int mux_div_clk_set_rate(struct clk *c, unsigned long rate)
 		goto err_set_rate;
 	}
 
+#if defined(CONFIG_HTC_DEBUG_FOOTPRINT)
+	set_acpuclk_footprint_by_clk(c, ACPU_BEFORE_CLK_PREPARE);
+#endif
 	rc = __clk_pre_reparent(c, new_parent, &flags);
 	if (rc)
 		goto err_pre_reparent;
 
-	/* Set divider and mux src atomically */
+#if defined(CONFIG_HTC_DEBUG_FOOTPRINT)
+	set_acpuclk_footprint_by_clk(c, ACPU_BEFORE_SET_RATE);
+#endif
+	
 	rc = __set_src_div(md, new_parent, new_div);
 	if (rc)
 		goto err_set_src_div;
 
+#if defined(CONFIG_HTC_DEBUG_FOOTPRINT)
+	set_acpuclk_cpu_freq_footprint_by_clk(FT_CUR_RATE, c, rrate);
+	set_acpuclk_l2_freq_footprint_by_clk(FT_CUR_RATE, c, rrate);
+	set_acpuclk_footprint_by_clk(c, ACPU_BEFORE_CLK_UNPREPARE);
+#endif
 	c->parent = new_parent;
 
 	__clk_post_reparent(c, old_parent, &flags);
 
 	if (md->safe_freq)
-		/* disable aux clock safe parent */
+		
 		clk_disable_unprepare(md->safe_parent);
 
-	/* Valid old_safe_freq, move back to the safe_freq value */
+	
 	if (old_safe_freq)
 		md->safe_freq = old_safe_freq;
+
+#if defined(CONFIG_HTC_DEBUG_FOOTPRINT)
+	set_acpuclk_footprint_by_clk(c, ACPU_BEFORE_RETURN);
+#endif
 
 	return 0;
 
 err_set_src_div:
-	/* Not switching to new_parent, so disable it */
+#if defined(CONFIG_HTC_DEBUG_FOOTPRINT)
+	set_acpuclk_footprint_by_clk(c, ACPU_BEFORE_ERR_CLK_UNPREPARE);
+#endif
+	
 	__clk_post_reparent(c, new_parent, &flags);
 err_pre_reparent:
+#if defined(CONFIG_HTC_DEBUG_FOOTPRINT)
+	set_acpuclk_footprint_by_clk(c, ACPU_BEFORE_ERR_SET_PARENT_RATE);
+#endif
 	rc = clk_set_rate(new_parent, new_parent_orig_rate);
 	WARN(rc, "%s: error changing new_parent (%s) rate back to %ld\n",
 		clk_name(c), clk_name(new_parent), new_parent_orig_rate);
 err_set_rate:
+#if defined(CONFIG_HTC_DEBUG_FOOTPRINT)
+	set_acpuclk_footprint_by_clk(c, ACPU_BEFORE_ERR_SET_RATE);
+#endif
 	rc = set_src_div(md, old_parent, old_div);
+#if defined(CONFIG_HTC_DEBUG_FOOTPRINT)
+	set_acpuclk_footprint_by_clk(c, ACPU_BEFORE_ERR_RETURN);
+#endif
 	WARN(rc, "%s: error changing back to original div (%d) and parent (%s)\n",
 		clk_name(c), old_div, clk_name(old_parent));
 	if (!rc && md->safe_freq)
@@ -880,10 +827,6 @@ static enum handoff mux_div_clk_handoff(struct clk *c)
 	unsigned int numer;
 
 	parent_rate = clk_get_rate(c->parent);
-	/*
-	 * div values are doubled for half dividers.
-	 * Adjust for that by picking a numer of 2.
-	 */
 	numer = md->data.is_half_divider ? 2 : 1;
 
 	if (md->data.div) {
@@ -898,15 +841,6 @@ static enum handoff mux_div_clk_handoff(struct clk *c)
 			? HANDOFF_ENABLED_CLK
 			: HANDOFF_DISABLED_CLK;
 
-	/*
-	 * If this function returns 'enabled' even when the clock downstream
-	 * of this clock is disabled, then handoff code will unnecessarily
-	 * enable the current parent of this clock. If this function always
-	 * returns 'disabled' and a clock downstream is on, the clock handoff
-	 * code will bump up the ref count for this clock and its current
-	 * parent as necessary. So, clocks without an actual HW gate can
-	 * always return disabled.
-	 */
 	return HANDOFF_DISABLED_CLK;
 }
 

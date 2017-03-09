@@ -131,6 +131,9 @@ struct usb_phy {
 	/* for notification of usb_phy_dbg_events */
 	void	(*dbg_event)(struct usb_phy *x,
 			char *event, int msg1, int msg2);
+
+	/* off mode on. notify otg driver to disable USB */
+	void	(*notify_usb_disabled)(void);/*++ 2015/6/3, USB Team,	PCN00021 ++*/
 };
 
 /**

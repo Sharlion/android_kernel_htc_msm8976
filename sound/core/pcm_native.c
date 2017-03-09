@@ -40,6 +40,14 @@
 #include <dma-coherence.h>
 #endif
 
+//htc audio ++
+#include <sound/soc.h>
+#undef pr_info
+#undef pr_err
+#define pr_info(fmt, ...) pr_aud_info(fmt, ##__VA_ARGS__)
+#define pr_err(fmt, ...) pr_aud_err(fmt, ##__VA_ARGS__)
+//htc audio --
+
 /*
  *  Compatibility
  */
@@ -141,7 +149,7 @@ int snd_pcm_info_user(struct snd_pcm_substream *substream,
 
 #undef RULES_DEBUG
 
-#ifdef RULES_DEBUG
+#if 1 //htc audio
 #define HW_PARAM(v) [SNDRV_PCM_HW_PARAM_##v] = #v
 static const char * const snd_pcm_hw_param_names[] = {
 	HW_PARAM(ACCESS),
@@ -200,8 +208,13 @@ int snd_pcm_hw_refine(struct snd_pcm_substream *substream,
 #endif
 		if (changed)
 			params->cmask |= 1 << k;
-		if (changed < 0)
+		if (changed < 0) {
+//htc audio ++
+			pr_info("refine mask %s \n",snd_pcm_hw_param_names[k]);
+			pr_info("fail mask 0x%x 0x%x 0x%x 0x%x\n", m->bits[3], m->bits[2], m->bits[1], m->bits[0]);
+//htc audio --
 			return changed;
+		}
 	}
 
 	for (k = SNDRV_PCM_HW_PARAM_FIRST_INTERVAL; k <= SNDRV_PCM_HW_PARAM_LAST_INTERVAL; k++) {
@@ -231,8 +244,14 @@ int snd_pcm_hw_refine(struct snd_pcm_substream *substream,
 #endif
 		if (changed)
 			params->cmask |= 1 << k;
-		if (changed < 0)
+		if (changed < 0) {
+//htc audio ++
+			pr_info("refine interval %s fail\n",snd_pcm_hw_param_names[k]);
+			pr_info("fail max %u min %u\n",i->max,i->min);
+//htc audio --
 			return changed;
+
+		}
 	}
 
 	for (k = 0; k < constrs->rules_num; k++)
@@ -296,8 +315,24 @@ int snd_pcm_hw_refine(struct snd_pcm_substream *substream,
 				vstamps[r->var] = stamp;
 				again = 1;
 			}
-			if (changed < 0)
+
+			if (changed < 0) {
+//htc audio ++
+				pr_info("refine rule %s fail",snd_pcm_hw_param_names[r->var]);
+				if (hw_is_mask(r->var)) {
+					m = hw_param_mask(params, r->var);
+					pr_info("fail rule mask %x", *m->bits);
+				} else if (r->var >= SNDRV_PCM_HW_PARAM_FIRST_INTERVAL && r->var <= SNDRV_PCM_HW_PARAM_LAST_INTERVAL) {
+					i = hw_param_interval(params, r->var);
+					if (i->empty)
+						pr_info("empty");
+					else
+						pr_info("fail rule max %u min %u",i->max,i->min);
+				}
+
+//htc audio --
 				return changed;
+			}
 			stamp++;
 		}
 	} while (again);

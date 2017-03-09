@@ -59,7 +59,7 @@ static inline void arch_timer_reg_write_cp15(int access, int reg, u32 val)
 
 static inline u32 arch_timer_reg_read_cp15(int access, int reg)
 {
-	u32 val;
+	u32 val = 0;
 
 	if (access == ARCH_TIMER_PHYS_ACCESS) {
 		switch (reg) {

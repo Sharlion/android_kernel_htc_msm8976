@@ -92,7 +92,6 @@ static void debug_int_stats_reset(struct seq_file *s)
 	}
 }
 
-/* NNV: revist, it may not be smd version */
 static void debug_read_smd_version(struct seq_file *s)
 {
 	uint32_t *smd_ver;
@@ -110,13 +109,6 @@ static void debug_read_smd_version(struct seq_file *s)
 		}
 }
 
-/**
- * pid_to_str - Convert a numeric processor id value into a human readable
- *		string value.
- *
- * @pid: the processor id to convert
- * @returns: a string representation of @pid
- */
 static char *pid_to_str(int pid)
 {
 	switch (pid) {
@@ -139,18 +131,6 @@ static char *pid_to_str(int pid)
 	}
 }
 
-/**
- * print_half_ch_state - Print the state of half of a SMD channel in a human
- *			readable format.
- *
- * @s: the sequential file to print to
- * @half_ch: half of a SMD channel that should have its state printed
- * @half_ch_funcs: the relevant channel access functions for @half_ch
- * @size: size of the fifo in bytes associated with @half_ch
- * @proc: the processor id that owns the part of the SMD channel associated with
- *		@half_ch
- * @is_restricted: true if memory access is restricted
- */
 static void print_half_ch_state(struct seq_file *s,
 				void *half_ch,
 				struct smd_half_channel_access *half_ch_funcs,
@@ -182,38 +162,16 @@ static void print_half_ch_state(struct seq_file *s,
 	}
 }
 
-/**
- * smd_xfer_type_to_str - Convert a numeric transfer type value into a human
- *		readable string value.
- *
- * @xfer_type: the processor id to convert
- * @returns: a string representation of @xfer_type
- */
 static char *smd_xfer_type_to_str(uint32_t xfer_type)
 {
 	if (xfer_type == 1)
-		return "S"; /* streaming type */
+		return "S"; 
 	else if (xfer_type == 2)
-		return "P"; /* packet type */
+		return "P"; 
 	else
-		return "L"; /* legacy type */
+		return "L"; 
 }
 
-/**
- * print_smd_ch_table - Print the current state of every valid SMD channel in a
- *			specific SMD channel allocation table to a human
- *			readable formatted output.
- *
- * @s: the sequential file to print to
- * @tbl: a valid pointer to the channel allocation table to print from
- * @num_tbl_entries: total number of entries in the table referenced by @tbl
- * @ch_base_id: the SMEM item id corresponding to the array of channel
- *		structures for the channels found in @tbl
- * @fifo_base_id: the SMEM item id corresponding to the array of channel fifos
- *		for the channels found in @tbl
- * @pid: processor id to use for any SMEM operations
- * @flags: flags to use for any SMEM operations
- */
 static void print_smd_ch_table(struct seq_file *s,
 				struct smd_alloc_elm *tbl,
 				unsigned num_tbl_entries,
@@ -230,14 +188,6 @@ static void print_smd_ch_table(struct seq_file *s,
 	int n;
 	bool is_restricted;
 
-/*
- * formatted, human readable channel state output, ie:
-ID|CHANNEL NAME       |T|PROC |STATE  |FIFO SZ|RDPTR  |WRPTR  |FLAGS   |DATAPEN
--------------------------------------------------------------------------------
-00|DS                 |S|APPS |CLOSED |0x02000|0x00000|0x00000|dcCiwrsb|0x00000
-  |                   | |MDMSW|OPENING|0x02000|0x00000|0x00000|dcCiwrsb|0x00000
--------------------------------------------------------------------------------
- */
 
 	seq_printf(s, "%2s|%-19s|%1s|%-5s|%-7s|%-7s|%-7s|%-7s|%-8s|%-7s\n",
 								"ID",
@@ -302,12 +252,6 @@ ID|CHANNEL NAME       |T|PROC |STATE  |FIFO SZ|RDPTR  |WRPTR  |FLAGS   |DATAPEN
 	}
 }
 
-/**
- * debug_ch - Print the current state of every valid SMD channel in a human
- *		readable formatted table.
- *
- * @s: the sequential file to print to
- */
 static void debug_ch(struct seq_file *s)
 {
 	struct smd_alloc_elm *tbl;
@@ -415,6 +359,15 @@ static int __init smd_debugfs_init(void)
 	debug_create("version", 0444, dent, debug_read_smd_version);
 	debug_create("int_stats", 0444, dent, debug_int_stats);
 	debug_create("int_stats_reset", 0444, dent, debug_int_stats_reset);
+
+#ifdef CONFIG_HTC_DEBUG_RIL_PCN0005_HTC_DUMP_SMSM_LOG
+#ifdef CONFIG_DEBUG_FS
+	do {
+		extern int smd_dumplog_debugfs_init(struct dentry *);
+		smd_dumplog_debugfs_init(dent);
+	} while(0);
+#endif
+#endif
 
 	return 0;
 }

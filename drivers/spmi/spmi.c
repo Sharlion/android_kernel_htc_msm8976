@@ -21,6 +21,9 @@
 #include <linux/spmi.h>
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
+#ifdef CONFIG_HTC_POWER_DEBUG
+#include <linux/htc_flags.h>
+#endif
 
 #include "spmi-dbgfs.h"
 
@@ -795,8 +798,11 @@ static int spmi_register_controller(struct spmi_controller *ctrl)
 
 	dev_dbg(&ctrl->dev, "Bus spmi-%d registered: dev:0x%p\n",
 					ctrl->nr, &ctrl->dev);
+#ifdef CONFIG_HTC_POWER_DEBUG
+	if (get_tamper_sf() == 0)
+#endif
+		spmi_dfs_add_controller(ctrl);
 
-	spmi_dfs_add_controller(ctrl);
 	return 0;
 
 exit:

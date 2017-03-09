@@ -223,9 +223,9 @@
 	rpm-regulator-ldoa10 {
 		status = "okay";
 		pm8950_l10: regulator-l10 {
-			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <2800000>;
-			qcom,init-voltage = <2800000>;
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			qcom,init-voltage = <1800000>;
 			status = "okay";
 		};
 	};
@@ -313,9 +313,14 @@
 	rpm-regulator-ldoa22 {
 		status = "okay";
 		pm8950_l22: regulator-l22 {
+			//HTC_CAM_START
+			//regulator-min-microvolt = <2800000>;
+			//regulator-max-microvolt = <2800000>;
+			//qcom,init-voltage = <2800000>;
 			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <2800000>;
+			regulator-max-microvolt = <2850000>;
 			qcom,init-voltage = <2800000>;
+			//HTC_CAM_END
 			status = "okay";
 		};
 	};
@@ -684,6 +689,16 @@
 		regulator-name = "adv_vreg";
 		startup-delay-us = <400>;
 		enable-avtive-high;
-		gpio = <&pm8004_mpps 4 0>;
+		//gpio = <&pm8004_mpps 4 0>;   //HTC_CAM, pm8004 MPP4 is for camera id pin
+	};
+
+	/* Rome 3.3V supply */
+	rome_vreg: rome_vreg {
+		compatible = "regulator-fixed";
+		startup-delay-us = <4000>;
+		enable-active-high;
+		gpio = <&pm8950_gpios 5 0>;
+		regulator-name = "rome_vreg";
+		status = "disabled";
 	};
 };

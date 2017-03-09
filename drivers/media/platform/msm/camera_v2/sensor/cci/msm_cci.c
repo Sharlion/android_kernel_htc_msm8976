@@ -35,7 +35,13 @@
 #define MSM_CCI_DRV_NAME "msm_cci"
 
 #undef CDBG
+/* HTC_START */
+#if 0
+#define CDBG(fmt, args...) pr_info("[CAM]"fmt, ##args)
+#else
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
+#endif
+/* HTC_END */
 
 /* Max bytes that can be read per CCI read transaction */
 #define CCI_READ_MAX 12

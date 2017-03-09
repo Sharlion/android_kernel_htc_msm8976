@@ -14,6 +14,7 @@
 #define DIAGIPCLOG_H
 
 #include <linux/ipc_logging.h>
+#include <linux/usb/usbdiag.h>	/* 2015/06/17, USB Team, PCN00037 */
 
 #define DIAG_IPC_LOG_PAGES	50
 
@@ -37,7 +38,10 @@ extern void *diag_ipc_log;
 		}							\
 	} while (0)
 #else
-#define DIAG_LOG(log_lvl, msg, ...)
+/*++ 2015/06/17, USB Team, PCN00037 ++*/
+#define DIAG_LOG(log_lvl, msg, ...) \
+	DIAGFWD_DBUG("[DIAG] %s(): " msg, __func__, ##__VA_ARGS__)
+/*-- 2015/06/17, USB Team, PCN00037 --*/
 #endif
 
 #endif

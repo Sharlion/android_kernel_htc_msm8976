@@ -315,7 +315,6 @@ struct regulator_dev {
 	struct regulator_enable_gpio *ena_pin;
 	unsigned int ena_gpio_state:1;
 	struct proxy_consumer *proxy_consumer;
-	struct regulator *debug_consumer;
 };
 
 struct regulator_dev *

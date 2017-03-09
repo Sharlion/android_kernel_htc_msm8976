@@ -157,12 +157,12 @@ int sdhci_msm_ice_cfg(struct sdhci_host *host, struct mmc_request *mrq,
 				return err;
 			}
 		}
-		/* if writing data command */
+		
 		if (rq_data_dir(req) == WRITE)
 			bypass = ice_set.encr_bypass ?
 					SDHCI_MSM_ICE_ENABLE_BYPASS :
 					SDHCI_MSM_ICE_DISABLE_BYPASS;
-		/* if reading data command */
+		
 		else if (rq_data_dir(req) == READ)
 			bypass = ice_set.decr_bypass ?
 					SDHCI_MSM_ICE_ENABLE_BYPASS :
@@ -175,19 +175,19 @@ int sdhci_msm_ice_cfg(struct sdhci_host *host, struct mmc_request *mrq,
 				ice_set.crypto_data.key_index);
 	}
 
-	/* Configure ICE index */
+	
 	ctrl_info_val =
 		(ice_set.crypto_data.key_index &
 		 MASK_SDHCI_MSM_ICE_CTRL_INFO_KEY_INDEX)
 		 << OFFSET_SDHCI_MSM_ICE_CTRL_INFO_KEY_INDEX;
 
-	/* Configure data unit size of transfer request */
+	
 	ctrl_info_val |=
 		(SDHCI_MSM_ICE_TR_DATA_UNIT_512_B &
 		 MASK_SDHCI_MSM_ICE_CTRL_INFO_CDU)
 		 << OFFSET_SDHCI_MSM_ICE_CTRL_INFO_CDU;
 
-	/* Configure ICE bypass mode */
+	
 	ctrl_info_val |=
 		(bypass & MASK_SDHCI_MSM_ICE_CTRL_INFO_BYPASS)
 		 << OFFSET_SDHCI_MSM_ICE_CTRL_INFO_BYPASS;
@@ -199,7 +199,7 @@ int sdhci_msm_ice_cfg(struct sdhci_host *host, struct mmc_request *mrq,
 	writel_relaxed(ctrl_info_val,
 		host->ioaddr + CORE_VENDOR_SPEC_ICE_CTRL_INFO_3_n + 16 * slot);
 
-	/* Ensure ICE registers are configured before issuing SDHCI request */
+	
 	mb();
 	return 0;
 }

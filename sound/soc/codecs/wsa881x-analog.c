@@ -39,16 +39,12 @@
 #define SPK_GAIN_12DB 4
 #define WIDGET_NAME_MAX_SIZE 80
 
-/*
- * Private data Structure for wsa881x. All parameters related to
- * WSA881X codec needs to be defined here.
- */
 struct wsa881x_pdata {
 	struct regmap *regmap[2];
 	struct i2c_client *client[2];
 	struct snd_soc_codec *codec;
 
-	/* track wsa881x status during probe */
+	
 	int status;
 	bool boost_enable;
 	bool visense_enable;
@@ -172,7 +168,7 @@ static int wsa881x_i2c_write_device(struct wsa881x_pdata *wsa881x,
 		rc = regmap_write(wsa881x->regmap[wsa881x_index], reg, val);
 		for (i = 0; rc && i < ARRAY_SIZE(delay_array_msec); i++) {
 			pr_debug("Failed writing reg=%u - retry(%d)\n", reg, i);
-			/* retry after delay of increasing order */
+			
 			msleep(delay_array_msec[i]);
 			rc = regmap_write(wsa881x->regmap[wsa881x_index],
 								reg, val);
@@ -193,7 +189,7 @@ static int wsa881x_i2c_write_device(struct wsa881x_pdata *wsa881x,
 		msg->buf = data;
 		ret = i2c_transfer(wsa881x->client[wsa881x_index]->adapter,
 						wsa881x->xfer_msg, 1);
-		/* Try again if the write fails */
+		
 		if (ret != 1) {
 			ret = i2c_transfer(
 					wsa881x->client[wsa881x_index]->adapter,
@@ -217,7 +213,7 @@ static int wsa881x_i2c_read_device(struct wsa881x_pdata *wsa881x,
 	struct i2c_msg *msg;
 	int ret = 0;
 	u8 reg_addr = 0;
-	u8 dest[5];
+	u8 dest[5] = {0}; 
 
 	wsa881x_index = get_i2c_wsa881x_device_index(reg);
 	if (wsa881x_index < 0) {
@@ -228,7 +224,7 @@ static int wsa881x_i2c_read_device(struct wsa881x_pdata *wsa881x,
 		rc = regmap_read(wsa881x->regmap[wsa881x_index], reg, &val);
 		for (i = 0; rc && i < ARRAY_SIZE(delay_array_msec); i++) {
 			pr_debug("Failed reading reg=%u - retry(%d)\n", reg, i);
-			/* retry after delay of increasing order */
+			
 			msleep(delay_array_msec[i]);
 			rc = regmap_read(wsa881x->regmap[wsa881x_index],
 						reg, &val);
@@ -256,7 +252,7 @@ static int wsa881x_i2c_read_device(struct wsa881x_pdata *wsa881x,
 		ret = i2c_transfer(wsa881x->client[wsa881x_index]->adapter,
 					wsa881x->xfer_msg, 2);
 
-		/* Try again if read fails first time */
+		
 		if (ret != 2) {
 			ret = i2c_transfer(
 				wsa881x->client[wsa881x_index]->adapter,
@@ -392,12 +388,12 @@ static int wsa881x_boost_ctrl(struct snd_soc_codec *codec, bool enable)
 			snd_soc_update_bits(codec, WSA881X_BOOST_EN_CTL,
 								0x80, 0x80);
 		}
-		/* For WSA8810, start-up time is 1500us as per qcrg sequence */
+		
 		usleep_range(1500, 1510);
 	} else {
-		/* ENSURE: Class-D amp is shutdown. CLK is still on */
+		
 		snd_soc_update_bits(codec, WSA881X_BOOST_EN_CTL, 0x80, 0x00);
-		/* boost settle time is 1500us as per qcrg sequence */
+		
 		usleep_range(1500, 1510);
 	}
 	return 0;
@@ -445,10 +441,6 @@ static int wsa881x_visense_txfe_ctrl(struct snd_soc_codec *codec, bool enable,
 		else
 			snd_soc_update_bits(codec,
 				WSA881X_SPKR_PROT_FE_VSENSE_VCM, 0x08, 0x08);
-		/*
-		 * 200us sleep is needed after visense txfe disable as per
-		 * HW requirement.
-		 */
 		usleep_range(200, 210);
 
 		snd_soc_update_bits(codec, WSA881X_SPKR_PROT_FE_GAIN,
@@ -471,7 +463,7 @@ static int wsa881x_visense_adc_ctrl(struct snd_soc_codec *codec, bool enable)
 		snd_soc_update_bits(codec, WSA881X_ADC_EN_MODU_V, 0x80, 0x80);
 		snd_soc_update_bits(codec, WSA881X_ADC_EN_MODU_I, 0x80, 0x80);
 	} else {
-		/* Ensure: Speaker Protection has been stopped */
+		
 		snd_soc_update_bits(codec, WSA881X_ADC_EN_MODU_V, 0x80, 0x00);
 		snd_soc_update_bits(codec, WSA881X_ADC_EN_MODU_I, 0x80, 0x00);
 	}
@@ -491,7 +483,7 @@ static void wsa881x_bandgap_ctrl(struct snd_soc_codec *codec, bool enable)
 		if (wsa881x->bg_cnt == 1) {
 			snd_soc_update_bits(codec, WSA881X_TEMP_OP,
 					    0x08, 0x08);
-			/* 400usec sleep is needed as per HW requirement */
+			
 			usleep_range(400, 410);
 		}
 	} else {
@@ -559,7 +551,7 @@ static int wsa881x_rdac_ctrl(struct snd_soc_codec *codec, bool enable)
 		snd_soc_update_bits(codec, WSA881X_SPKR_DRV_GAIN, 0xF0, 0x40);
 		snd_soc_update_bits(codec, WSA881X_SPKR_MISC_CTL1, 0x01, 0x01);
 	} else {
-		/* Ensure class-D amp is off */
+		
 		snd_soc_update_bits(codec, WSA881X_SPKR_DAC_CTL, 0x80, 0x00);
 	}
 	return 0;
@@ -572,10 +564,6 @@ static int wsa881x_spkr_pa_ctrl(struct snd_soc_codec *codec, bool enable)
 
 	pr_debug("%s: enable:%d\n", __func__, enable);
 	if (enable) {
-		/*
-		 * Ensure: Boost is enabled and stable, Analog input is up
-		 * and outputting silence
-		 */
 		if (!WSA881X_IS_2_0(wsa881x->version)) {
 			snd_soc_update_bits(codec, WSA881X_ADC_EN_DET_TEST_I,
 								0xFF, 0x01);
@@ -599,7 +587,7 @@ static int wsa881x_spkr_pa_ctrl(struct snd_soc_codec *codec, bool enable)
 		} else
 			snd_soc_update_bits(codec, WSA881X_SPKR_DRV_EN,
 								0x80, 0x80);
-		/* add 1000us delay as per qcrg */
+		
 		usleep_range(1000, 1010);
 		snd_soc_update_bits(codec, WSA881X_SPKR_DRV_EN, 0x01, 0x01);
 		if (WSA881X_IS_2_0(wsa881x->version))
@@ -622,10 +610,6 @@ static int wsa881x_spkr_pa_ctrl(struct snd_soc_codec *codec, bool enable)
 			wsa881x_temp_sensor_ctrl(codec, true);
 		}
 	} else {
-		/*
-		 * Ensure: Boost is still on, Stream from Analog input and
-		 * Speaker Protection has been stopped and input is at 0V
-		 */
 		if (WSA881X_IS_2_0(wsa881x->version)) {
 			snd_soc_update_bits(codec, WSA881X_SPKR_BIAS_CAL,
 								0x01, 0x01);
@@ -892,7 +876,7 @@ static int wsa881x_shutdown(struct wsa881x_pdata *pdata)
 		return ret;
 	}
 	if (pdata->codec) {
-		/* restore defaults to cache */
+		
 		for (reg = 0; reg < ARRAY_SIZE(wsa881x_ana_reg_defaults);
 				reg++) {
 			if (wsa881x_ana_reg_readable[reg])
@@ -1047,11 +1031,6 @@ static int wsa881x_reset(struct wsa881x_pdata *pdata, bool enable)
 {
 	int ret = 0;
 
-	/*
-	 * shutdown the GPIOs WSA_EN, WSA_MCLK, regulators
-	 * and restore defaults in soc cache when shutdown.
-	 * Enable regulators, GPIOs WSA_MCLK, WSA_EN when powerup.
-	 */
 	if (enable) {
 		if (pdata->wsa_active)
 			return 0;
@@ -1144,7 +1123,7 @@ static int check_wsa881x_presence(struct i2c_client *client)
 					client->addr);
 		return ret;
 	}
-	/* allow 20ms before trigger next write to verify bongo presence */
+	
 	msleep(20);
 	ret = wsa881x_i2c_write_device(&wsa_pdata[wsa881x_index],
 					WSA881X_CDC_RST_CTL, 0x00);
@@ -1160,7 +1139,7 @@ static int wsa881x_populate_dt_pdata(struct device *dev)
 {
 	int ret = 0;
 
-	/* reading the gpio configurations from dtsi file */
+	
 	if (!pinctrl_init) {
 		ret = msm_gpioset_initialize(CLIENT_WSA_BONGO_1, dev);
 		if (ret < 0) {
@@ -1262,7 +1241,7 @@ static int wsa881x_i2c_probe(struct i2c_client *client,
 				__func__, ret);
 			goto err;
 		}
-		/* bus reset sequence */
+		
 		ret = wsa881x_reset(pdata, true);
 		if (ret < 0) {
 			dev_err(&client->dev, "%s: WSA enable Failed %d\n",
@@ -1329,7 +1308,7 @@ static int wsa881x_i2c_resume(struct device *dev)
 static const struct dev_pm_ops wsa881x_i2c_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(wsa881x_i2c_suspend, wsa881x_i2c_resume)
 };
-#endif /* CONFIG_PM_SLEEP */
+#endif 
 
 static const struct i2c_device_id wsa881x_i2c_id[] = {
 	{"wsa881x-i2c-dev", WSA881X_I2C_SPK0_SLAVE0_ADDR},

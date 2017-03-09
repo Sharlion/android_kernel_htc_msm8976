@@ -156,6 +156,15 @@ int msm_ion_unsecure_table(struct sg_table *table);
 int msm_ion_hyp_assign_call(struct sg_table *table,
 				u32 *source_vm_list, u32 source_list_size,
 				u32 *dest_vm_list, u32 dest_list_size);
+
+/**
+ * msm_ion_heap_meminfo - Calculate meminfo in ion heap.
+ *
+ * @is_total - Calculate total memory usage or in used only
+ *
+ * Returns memory usage in specified heaps and usages
+ */
+uintptr_t msm_ion_heap_meminfo(const bool is_total);
 #else
 static inline struct ion_client *msm_ion_client_create(const char *name)
 {
@@ -192,6 +201,10 @@ static inline int msm_ion_hyp_assign_call(struct sg_table *table,
 	return -ENODEV;
 }
 
+static inline uintptr_t msm_ion_heap_meminfo(const bool is_total)
+{
+	return 0;
+}
 #endif /* CONFIG_ION */
 
 #endif

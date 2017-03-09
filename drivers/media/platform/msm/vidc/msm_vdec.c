@@ -569,7 +569,7 @@ static struct msm_vidc_ctrl msm_vdec_ctrls[] = {
 		.name = "Set Decoder Operating rate",
 		.type = V4L2_CTRL_TYPE_INTEGER,
 		.minimum = 0,
-		.maximum = 300 << 16,  /* 300 fps in Q16 format*/
+		.maximum = 300 << 16,  
 		.default_value = 0,
 		.step = 1,
 		.qmenu = NULL,
@@ -1063,10 +1063,6 @@ int msm_vdec_g_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 		bool ds_enabled = msm_comm_g_ctrl(inst,
 			V4L2_CID_MPEG_VIDC_VIDEO_KEEP_ASPECT_RATIO);
 
-		/*
-		 * Do not update height and width on capture port, if
-		 * downscalar is explicitly enabled from v4l2 client.
-		 */
 		if (msm_comm_get_stream_output_mode(inst) ==
 			HAL_VIDEO_DECODER_SECONDARY && ds_enabled) {
 			inst->prop.height[OUTPUT_PORT] = inst->reconfig_height;
@@ -1267,11 +1263,6 @@ static int update_output_buffer_size(struct msm_vidc_inst *inst,
 	if (!inst || !f)
 		return -EINVAL;
 
-	/*
-	 * Firmware expects driver to always set the minimum buffer
-	 * size negotiated with the v4l2 client. Firmware will use this
-	 * size to check for buffer sufficiency in dynamic buffer mode.
-	 */
 	for (i = 0; i < num_planes; ++i) {
 		enum hal_buffer type = msm_comm_get_hal_output_buffer(inst);
 
@@ -1292,13 +1283,6 @@ static int update_output_buffer_size(struct msm_vidc_inst *inst,
 		}
 	}
 
-	/*
-	 * Set min buffer size for DPB buffers as well.
-	 * Firmware mandates setting of minimum buffer size
-	 * and actual buffer count for both OUTPUT and OUTPUT2.
-	 * Hence we are setting back the same buffer size
-	 * information back to firmware.
-	 */
 	if (msm_comm_get_stream_output_mode(inst) ==
 		HAL_VIDEO_DECODER_SECONDARY) {
 		bufreq = get_buff_req_buffer(inst, HAL_BUFFER_OUTPUT);
@@ -1313,13 +1297,13 @@ static int update_output_buffer_size(struct msm_vidc_inst *inst,
 			goto exit;
 	}
 
-	/* Query buffer requirements from firmware */
+	
 	rc = msm_comm_try_get_bufreqs(inst);
 	if (rc)
 		dprintk(VIDC_WARN,
 			"Failed to get buf req, %d\n", rc);
 
-	/* Read back updated firmware size */
+	
 	for (i = 0; i < num_planes; ++i) {
 		enum hal_buffer type = msm_comm_get_hal_output_buffer(inst);
 
@@ -1417,10 +1401,6 @@ int msm_vdec_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 			frame_sz.height = inst->prop.height[CAPTURE_PORT];
 			msm_comm_set_color_format(inst, HAL_BUFFER_OUTPUT2,
 				f->fmt.pix_mp.pixelformat);
-			/*
-			 * If split mode is enabled then enable TILE mode
-			 * on output DPB buffers for power effeciency
-			 */
 			switch (f->fmt.pix_mp.pixelformat) {
 			case V4L2_PIX_FMT_NV12:
 				dprintk(VIDC_DBG,
@@ -1720,13 +1700,6 @@ static int msm_vdec_queue_setup(struct vb2_queue *q,
 				inst->buff_req.buffer[1].buffer_alignment);
 		sizes[0] = bufreq->buffer_size;
 
-		/*
-		 * Set actual buffer count to firmware for DPB buffers.
-		 * Firmware mandates setting of minimum buffer size
-		 * and actual buffer count for both OUTPUT and OUTPUT2.
-		 * Hence we are setting back the same buffer size
-		 * information back to firmware.
-		 */
 		if (msm_comm_get_stream_output_mode(inst) ==
 			HAL_VIDEO_DECODER_SECONDARY) {
 			bufreq = get_buff_req_buffer(inst,
@@ -1801,16 +1774,6 @@ static inline int start_streaming(struct msm_vidc_inst *inst)
 		}
 	}
 
-	/*
-	 * For seq_changed_insufficient, driver should set session_continue
-	 * to firmware after the following sequence
-	 * - driver raises insufficient event to v4l2 client
-	 * - all output buffers have been flushed and freed
-	 * - v4l2 client queries buffer requirements and splits/combines OPB-DPB
-	 * - v4l2 client sets new set of buffers to firmware
-	 * - v4l2 client issues CONTINUE to firmware to resume decoding of
-	 *   submitted ETBs.
-	 */
 	if (inst->in_reconfig) {
 		dprintk(VIDC_DBG, "send session_continue after reconfig\n");
 		rc = call_hfi_op(hdev, session_continue,
@@ -1999,9 +1962,6 @@ int msm_vdec_cmd(struct msm_vidc_inst *inst, struct v4l2_decoder_cmd *dec)
 			goto exit;
 		}
 		rc = msm_comm_try_state(inst, MSM_VIDC_CLOSE_DONE);
-		/* Clients rely on this event for joining poll thread.
-		 * This event should be returned even if firmware has
-		 * failed to respond */
 		msm_vidc_queue_v4l2_event(inst, V4L2_EVENT_MSM_VIDC_CLOSE_DONE);
 		break;
 	default:
@@ -2079,10 +2039,6 @@ static int check_tz_dynamic_buffer_support(void)
 	int rc = 0;
 	int version = scm_get_feat_version(TZ_DYNAMIC_BUFFER_FEATURE_ID);
 
-	/*
-	 * if the version is < 1.1.0 then dynamic buffer allocation is
-	 * not supported
-	 */
 	if (version < TZ_FEATURE_VERSION(1, 1, 0)) {
 		dprintk(VIDC_DBG,
 			"Dynamic buffer mode not supported, tz version is : %u vs required : %u\n",
@@ -2164,7 +2120,7 @@ static int try_get_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 static int vdec_v4l2_to_hal(int id, int value)
 {
 	switch (id) {
-		/* H264 */
+		
 	case V4L2_CID_MPEG_VIDEO_H264_PROFILE:
 		switch (value) {
 		case V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE:
@@ -2268,7 +2224,7 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 	if (rc)
 		return rc;
 
-	/* Small helper macro for quickly getting a control and err checking */
+	
 #define TRY_GET_CTRL(__ctrl_id) ({ \
 		struct v4l2_ctrl *__temp; \
 		__temp = get_ctrl_from_cluster( \
@@ -2277,8 +2233,8 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		if (!__temp) { \
 			dprintk(VIDC_ERR, "Can't find %s (%x) in cluster\n", \
 				#__ctrl_id, __ctrl_id); \
-			/* Clusters are hardcoded, if we can't find */ \
-			/* something then things are massively screwed up */ \
+			 \
+			 \
 			BUG_ON(1); \
 		} \
 		__temp; \
@@ -2733,14 +2689,10 @@ int msm_vdec_ctrl_init(struct msm_vidc_inst *inst)
 	for (; idx < NUM_CTRLS; idx++) {
 		struct v4l2_ctrl *ctrl = NULL;
 		if (IS_PRIV_CTRL(msm_vdec_ctrls[idx].id)) {
-			/*add private control*/
+			
 			ctrl_cfg.def = msm_vdec_ctrls[idx].default_value;
 			ctrl_cfg.flags = 0;
 			ctrl_cfg.id = msm_vdec_ctrls[idx].id;
-			/* ctrl_cfg.is_private =
-			 * msm_vdec_ctrls[idx].is_private;
-			 * ctrl_cfg.is_volatile =
-			 * msm_vdec_ctrls[idx].is_volatile;*/
 			ctrl_cfg.max = msm_vdec_ctrls[idx].maximum;
 			ctrl_cfg.min = msm_vdec_ctrls[idx].minimum;
 			ctrl_cfg.menu_skip_mask =
@@ -2803,7 +2755,7 @@ int msm_vdec_ctrl_init(struct msm_vidc_inst *inst)
 		inst->ctrls[idx] = ctrl;
 	}
 
-	/* Construct a super cluster of all controls */
+	
 	inst->cluster = get_super_cluster(inst, &cluster_size);
 	if (!inst->cluster || !cluster_size) {
 		dprintk(VIDC_WARN,

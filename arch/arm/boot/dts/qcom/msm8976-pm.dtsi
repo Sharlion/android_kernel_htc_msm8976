@@ -337,6 +337,7 @@
 			<0xff 112>, /* smmu_bus_intr[38] */
 			<0xff 114>, /* qdsd_intr_out */
 			<0xff 126>, /* app_cxt_irpt_10 */
+			<0xff 127>, /* blsp1_irq */
 			<0xff 128>, /* blsp1_peripheral_irq[3] */
 			<0xff 129>, /* blsp1_peripheral_irq[4] */
 			<0xff 130>, /* qup_irq */
@@ -400,12 +401,14 @@
 			<0xff 262>, /* ipa_bam_irq[0] */
 			<0xff 269>, /* rpm_wdog_expired_irq */
 			<0xff 270>, /* blsp1_bam_irq[0] */
+			<0xff 271>, /* blsp2_bam_irq[0] */
 			<0xff 272>, /* smmu_intr_bus[17] */
 			<0xff 273>, /* smmu_bus_intr[18] */
 			<0xff 274>, /* smmu_bus_intr[19] */
 			<0xff 275>, /* rpm_ipc(30) */
 			<0xff 276>, /* rpm_ipc(31) */
 			<0xff 277>, /* smmu_intr_bus[20] */
+			<0xff 280>, /* mobicore */
 			<0xff 286>, /* app_cxt_irpt_0 */
 			<0xff 287>, /* app_cxt_irpt_1 */
 			<0xff 296>, /* lmh_interrupt */
@@ -463,7 +466,8 @@
 			<53  131>,
 			<54  39>,
 			<55  41>,
-			<56  35>;
+			<56  35>,
+			<0xff 24>; /* msm gpio24 for display */
 	};
 
 	qcom,cpu-sleep-status{
@@ -489,6 +493,24 @@
 		reg-names = "phys_addr_base", "offset_addr", "heap_phys_addrbase";
 		qcom,sleep-stats-version = <2>;
 	};
+
+	qcom,rpm-stats-ver {
+		compatible = "qcom,rpm-stats-ver";
+		reg = <0x290000 0x4>;
+		reg-names = "rpm_data_base";
+	};
+
+	cpu_fuse@a412C {
+		compatible = "qcom,cpufuse-8952";
+		reg = <0x00a412c 0x8>;
+	};
+
+        qcom,rpm-stats@29ffa0{
+                compatible = "qcom,rpm-stats";
+                reg = <0x29ffa0 0x60>;
+                reg-names = "phys_addr_base";
+                qcom,sleep-stats-version = <3>;
+        };
 
 	qcom,rpm-master-stats@60150 {
 		compatible = "qcom,rpm-master-stats";

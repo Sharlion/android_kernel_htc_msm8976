@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -60,7 +60,6 @@ DEFINE_CLK_RPM_SMD(sysmmnoc_clk, sysmmnoc_a_clk, RPM_BUS_CLK_TYPE,
 							SYSMMNOC_ID, NULL);
 DEFINE_CLK_RPM_SMD_QDSS(qdss_clk, qdss_a_clk, RPM_MISC_CLK_TYPE, QDSS_ID);
 
-/* SMD_XO_BUFFER */
 DEFINE_CLK_RPM_SMD_XO_BUFFER(bb_clk1, bb_clk1_a, BB_CLK1_ID);
 DEFINE_CLK_RPM_SMD_XO_BUFFER(bb_clk2, bb_clk2_a, BB_CLK2_ID);
 DEFINE_CLK_RPM_SMD_XO_BUFFER(rf_clk2, rf_clk2_a, RF_CLK2_ID);
@@ -114,7 +113,6 @@ static struct pll_vote_clk gpll0_clk_src = {
 	},
 };
 
-/* Don't vote for xo if using this clock to allow xo shutdown */
 static struct pll_vote_clk gpll0_ao_clk_src = {
 	.en_reg = (void __iomem *)APCS_GPLL_ENA_VOTE,
 	.en_mask = BIT(0),
@@ -1504,7 +1502,7 @@ static struct rcg_clk usb_fs_system_clk_src = {
 static struct clk_freq_tbl ftbl_usb_hs_system_clk_src[] = {
 	F(  57140000,          gpll0,   14,    0,     0),
 	F( 100000000,          gpll0,    8,    0,     0),
-	F( 133330000,          gpll0,    6,    0,     0),
+	F( 133333333,          gpll0,    6,    0,     0),
 	F( 177780000,          gpll0,  4.5,    0,     0),
 	F_END
 };
@@ -3305,7 +3303,6 @@ static struct mux_clk gcc_debug_mux = {
 	},
 };
 
-/* Clock lookup */
 static struct clk_lookup msm_clocks_lookup[] = {
 	 CLK_LIST(gpll0_clk_src),
 	 CLK_LIST(gpll0_ao_clk_src),
@@ -3349,7 +3346,7 @@ static struct clk_lookup msm_clocks_lookup[] = {
 	 CLK_LIST(xo_pil_pronto_clk),
 	 CLK_LIST(xo_wlan_clk),
 
-	 /* XO buffers */
+	 
 	 CLK_LIST(bb_clk1),
 	 CLK_LIST(bb_clk2),
 	 CLK_LIST(rf_clk2),
@@ -3594,16 +3591,12 @@ static int msm_gcc_probe(struct platform_device *pdev)
 	clk_set_rate(&apss_ahb_clk_src.c, 19200000);
 	clk_prepare_enable(&apss_ahb_clk_src.c);
 
-	/*
-	 * Hold an active set vote for PCNOC AHB source. Sleep set
-	 * vote is 0.
-	 */
 	clk_set_rate(&pcnoc_keepalive_a_clk.c, 19200000);
 	clk_prepare_enable(&pcnoc_keepalive_a_clk.c);
 
 	clk_prepare_enable(&xo_a_clk_src.c);
 
-	/* Configure Sleep and Wakeup cycles for GMEM clock */
+	
 	regval = readl_relaxed(GCC_REG_BASE(OXILI_GMEM_CBCR));
 	regval ^= 0xFF0;
 	regval |= CLKFLAG_WAKEUP_CYCLES << 8;
@@ -3612,7 +3605,7 @@ static int msm_gcc_probe(struct platform_device *pdev)
 
 	configure_sr_hpm_lp_pll(&gpll3_config, &gpll3_regs, 1);
 
-	/* Enable AUX2 clock for APSS */
+	
 	regval = readl_relaxed(GCC_REG_BASE(APSS_MISC));
 	regval |= BIT(2);
 	writel_relaxed(regval, GCC_REG_BASE(APSS_MISC));
@@ -3692,7 +3685,6 @@ static int __init msm_clock_debug_init(void)
 }
 late_initcall(msm_clock_debug_init);
 
-/* MDSS DSI_PHY_PLL */
 static struct clk_lookup msm_clocks_gcc_mdss[] = {
 	CLK_LIST(ext_byte0_clk_src),
 	CLK_LIST(ext_byte1_clk_src),
@@ -3812,7 +3804,6 @@ static int __init msm_gcc_mdss_init(void)
 }
 fs_initcall_sync(msm_gcc_mdss_init);
 
-/* GFX Clocks */
 static struct clk_lookup msm_clocks_gcc_gfx[] = {
 	CLK_LIST(gfx3d_clk_src),
 	CLK_LIST(gcc_oxili_gfx3d_clk),
@@ -3987,12 +3978,12 @@ static int msm_gcc_gfx_probe(struct platform_device *pdev)
 	ret = of_msm_clock_register(pdev->dev.of_node, msm_clocks_gcc_gfx,
 				ARRAY_SIZE(msm_clocks_gcc_gfx));
 
-	/* Oxili Ocmem in GX rail: OXILI_GMEM_CLAMP_IO */
+	
 	regval = readl_relaxed(GCC_REG_BASE(GX_DOMAIN_MISC));
 	regval &= ~BIT(0);
 	writel_relaxed(regval, GCC_REG_BASE(GX_DOMAIN_MISC));
 
-	/* Configure Sleep and Wakeup cycles for OXILI clock */
+	
 	regval = readl_relaxed(GCC_REG_BASE(OXILI_GFX3D_CBCR));
 	regval &= ~0xF0;
 	regval |= CLKFLAG_SLEEP_CYCLES << 4;
@@ -4024,3 +4015,26 @@ static int __init msm_gcc_gfx_init(void)
 	return platform_driver_register(&msm_clock_gcc_gfx_driver);
 }
 arch_initcall_sync(msm_gcc_gfx_init);
+#ifdef CONFIG_HTC_POWER_DEBUG
+void clk_8976_ignore_list_add(const char *clock_name)
+{
+	struct clk_lookup *p, *cl = NULL;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(msm_clocks_lookup); i++) {
+		p = &msm_clocks_lookup[i];
+		if (p->clk && !strcmp(p->clk->dbg_name, clock_name)) {
+			cl = p;
+		}
+	}
+	if (cl)
+	cl->clk->flags |= CLKFLAG_IGNORE;
+}
+
+int __init clk_8976_ignore_list_init(void)
+{
+	clk_8976_ignore_list_add("gcc_blsp1_uart2_apps_clk");
+	return 0;
+}
+module_init(clk_8976_ignore_list_init);
+#endif

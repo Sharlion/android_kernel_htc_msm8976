@@ -118,11 +118,34 @@
 
 		qcom,msm-mbhc-hphl-swh = <1>;
 		qcom,max-aux-codec = <1>;
-		qcom,aux-codec = "wsa881x.20170211";
-		qcom,aux-codec-prefix = "SpkrLeft";
+//HTC_AUD_START
+//              qcom,aux-codec = "wsa881x.20170211";
+//              qcom,aux-codec-prefix = "SpkrLeft";
+//HTC_AUD_END
 	};
 };
+//HTC_AUDIO_START
+/*
+&slim_msm {
+	tasha_codec {
+		swr_master {
+			compatible = "qcom,swr-wcd";
+			#address-cells = <2>;
+			#size-cells = <0>;
 
+			wsa881x@20170211 {
+				compatible = "qcom,wsa881x";
+				reg = <0x00 0x20170211>;
+				pinctrl-names = "wsa_spkr_sd_act",
+						"wsa_spkr_sd_sus";
+				pinctrl-0 = <&wsa_spkr_sd_act>;
+				pinctrl-1 = <&wsa_spkr_sd_sus>;
+			};
+		};
+	};
+};
+*/
+//HTC_AUDIO_END
 &tlmm_pinmux {
 	tlmm_gpio_key {
 		qcom,pins = <&gp 112>, <&gp 113>;

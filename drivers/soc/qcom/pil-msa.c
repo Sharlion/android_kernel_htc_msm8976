@@ -276,18 +276,6 @@ int pil_mss_shutdown(struct pil_desc *pil)
 	if (drv->axi_halt_nc)
 		pil_q6v5_halt_axi_port(pil, drv->axi_halt_nc);
 
-	/*
-	 * Software workaround to avoid high MX current during LPASS/MSS
-	 * restart.
-	 */
-	if (drv->mx_spike_wa && drv->ahb_clk_vote) {
-		ret = clk_prepare_enable(drv->ahb_clk);
-		if (!ret)
-			assert_clamps(pil);
-		else
-			dev_err(pil->dev, "error turning ON AHB clock\n");
-	}
-
 	ret = pil_mss_restart_reg(drv, 1);
 
 	if (drv->is_booted) {
@@ -517,7 +505,9 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 	const struct firmware *fw, *dp_fw;
 	char fw_name_legacy[10] = "mba.b00";
 	char fw_name[10] = "mba.mbn";
+#if 0 /*+SSD-RIL: we don't need to load MSADP image on MSM8952 */
 	char *dp_name = "msadp";
+#endif /*-SSD-RIL: we don't need to load MSADP image on MSM8952 */
 	char *fw_name_p;
 	void *mba_virt;
 	dma_addr_t mba_phys, mba_phys_end;
@@ -541,8 +531,9 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 	mba_virt = dma_alloc_attrs(&md->mba_mem_dev, drv->mba_size,
 			&mba_phys, GFP_KERNEL, &md->attrs_dma);
 	if (!mba_virt) {
-		dev_err(pil->dev, "MBA metadata buffer allocation failed\n");
+		dev_err(pil->dev, "%s: MBA metadata buffer allocation failed\n", __func__);
 		ret = -ENOMEM;
+		BUG_ON(1);
 		goto err_dma_alloc;
 	}
 
@@ -563,6 +554,9 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 	memcpy(mba_virt, data, count);
 	wmb();
 
+#if 1 /*+SSD-RIL: we don't need to load MSADP image on MSM8952 */
+        drv->dp_virt = NULL;
+#else
 	/* Load modem debug policy */
 	ret = request_firmware(&dp_fw, dp_name, pil->dev);
 	if (ret) {
@@ -593,6 +587,7 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 		/* Ensure memcpy is done before powering up modem */
 		wmb();
 	}
+#endif /*-SSD-RIL: we don't need to load MSADP image on MSM8952 */
 
 	ret = pil_mss_reset(pil);
 	if (ret) {
@@ -610,9 +605,13 @@ err_mss_reset:
 	if (drv->dp_virt)
 		dma_free_attrs(&md->mba_mem_dev,  dp_fw->size, drv->dp_virt,
 				drv->dp_phys, &md->attrs_dma);
+
+#if 0 /*+SSD-RIL: we don't need to load MSADP image on MSM8952 */
 err_invalid_fw:
 	if (dp_fw)
 		release_firmware(dp_fw);
+#endif /*-SSD-RIL: we don't need to load MSADP image on MSM8952 */
+
 err_mba_data:
 	dma_free_attrs(&md->mba_mem_dev, drv->mba_size, drv->mba_virt,
 				drv->mba_phys, &md->attrs_dma);
@@ -640,8 +639,9 @@ static int pil_msa_auth_modem_mdt(struct pil_desc *pil, const u8 *metadata,
 	mdata_virt = dma_alloc_attrs(&drv->mba_mem_dev, size, &mdata_phys,
 					GFP_KERNEL, &attrs);
 	if (!mdata_virt) {
-		dev_err(pil->dev, "MBA metadata buffer allocation failed\n");
+		dev_err(pil->dev, "%s: MBA metadata buffer allocation failed\n", __func__);
 		ret = -ENOMEM;
+		BUG_ON(1);
 		goto fail;
 	}
 	memcpy(mdata_virt, metadata, size);

@@ -13,34 +13,14 @@
 
 #include "msm8952.dtsi"
 #include "msm8952-pinctrl.dtsi"
-#include "msm8952-camera-sensor-mtp.dtsi"
-
-&i2c_3 { /* BLSP1 QUP3 */
-	synaptics@20 {
-		compatible = "synaptics,dsx";
-		reg = <0x20>;
-		interrupt-parent = <&msm_gpio>;
-		interrupts = <65 0x2008>;
-		avdd-supply = <&pm8950_l17>;
-		vdd-supply = <&pm8950_l6>;
-		clock-names = "iface_clk", "core_clk";
-		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
-			<&clock_gcc clk_gcc_blsp1_qup3_i2c_apps_clk>;
-		/* pins used by touchscreen */
-		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
-		pinctrl-0 = <&ts_int_active &ts_reset_active>;
-		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
-		pinctrl-2 = <&ts_release>;
-		synaptics,irq-gpio = <&msm_gpio 65 0x2008>;
-		synaptics,reset-gpio = <&msm_gpio 64 0x0>;
-		synaptics,i2c-pull-up;
-		synaptics,power-down;
-		synaptics,disable-gpios;
-		synaptics,bypass-packrat-id-check;
-		synaptics,display-coords = <0 0 1079 1919>;
-		synaptics,panel-coords = <0 0 1079 2084>;
-	};
-};
+/*#include "msm8952-camera-sensor-mtp.dtsi"*/
+/*#include "msm8952-camera-sensor-hiaaero.dtsi"*/
+#include "msm8952-touch-hima_aero.dtsi"
+#include "msm8952-nfc548-hima_aero.dtsi"
+#include "msm8952-shub-hima_aero.dtsi"
+/* htc audio ++ */
+#include "msm8952-aud-pmec2.dtsi"
+/* htc audio -- */
 
 &i2c_2 {
 	/* Parallel-charger configuration */
@@ -75,48 +55,68 @@
 };
 
 &soc {
-	gen-vkeys {
-		compatible = "qcom,gen-vkeys";
-		label = "synaptics_dsx";
-		qcom,disp-maxx = <1079>;
-		qcom,disp-maxy = <1919>;
-		qcom,panel-maxx = <1079>;
-		qcom,panel-maxy = <2084>;
-		qcom,key-codes = <158 139 172 217>;
+	hall_ak8789 {
+		compatible = "hall_sensor,ak8789";
+		hall,att_used = <2>;
+		hall,att_gpio = <&msm_gpio 13 0>;
+		hall,att_gpio_s = <&msm_gpio 12 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&hall_pinctrl_active>;
 	};
 
-	gpio_keys {
-		compatible = "gpio-keys";
-		input-name = "gpio-keys";
-		pinctrl-names = "tlmm_gpio_key_active","tlmm_gpio_key_suspend";
-		pinctrl-0 = <&gpio_key_active>;
-		pinctrl-1 = <&gpio_key_suspend>;
+	// Fingerprint for TEE version
+	fp_fpc1155 {
+		compatible = "fpc,fpc1020";
+                interrupt-parent  = <&msm_gpio>;
+                interrupts        = <46 0x0>;
+                l22-supply = <&pm8950_l22>;
+                fpc_gpio_rst = <&msm_gpio 47 0>;
+                fpc_gpio_irq = <&msm_gpio 46 0>;
+                fpc,use_fpc2050   = <1>;
+                fpc,enable-on-boot;
+                /delete-property/ fpc,enable-wakeup;
+                // EV_MSC, MSC_SCAN 
+                fpc,event-type = <4>;
+                fpc,event-code = <4>;
+                pinctrl-names     = "fpc1020_reset_reset",
+                                   "fpc1020_reset_active",
+                                    "fpc1020_irq_active",
+                                    "fpc1020_spi_active",
+                                    "fpc1020_spi_suspend",
+                                    "fpc1020_cs_high";
 
-		camera_focus {
-			label = "camera_focus";
-			gpios = <&msm_gpio 87 0x1>;
-			linux,input-type = <1>;
-			linux,code = <0x210>;
-			debounce-interval = <15>;
-		};
-
-		camera_snapshot {
-			label = "camera_snapshot";
-			gpios = <&msm_gpio 86 0x1>;
-			linux,input-type = <1>;
-			linux,code = <0x2fe>;
-			debounce-interval = <15>;
-		};
-
-		vol_up {
-			label = "volume_up";
-			gpios = <&msm_gpio 85 0x1>;
-			linux,input-type = <1>;
-			linux,code = <115>;
-			debounce-interval = <15>;
-		};
+                pinctrl-0         = <&fpc1020_reset_reset>;
+                pinctrl-1         = <&fpc1020_reset_active>;
+                pinctrl-2         = <&fpc1020_irq_active>;
+                pinctrl-3         = <&fpc1020_spi_active>;
+                pinctrl-4         = <&fpc1020_spi_suspend>;
+                pinctrl-5         = <&fpc1020_cs_high>;
 	};
 
+	//Fingerprint for REE version
+/*
+	spi@78B5000 {
+		status = "ok";
+		fp_fpc1155-spi@0 {
+			compatible        = "fpc,fpc1020";
+			reg               = <0>; //CS ID
+			l22-supply 	  = <&pm8950_l22>;
+			fpc_gpio_irq      = <&msm_gpio 46 0>;   //Interrupt pin
+			fpc_gpio_reset    = <&msm_gpio 47 0>; //Reset pin
+			fpc_gpio_cs       = <&msm_gpio 2 0>; //spi CS 0
+			fpc,use_fpc2050   = <1>;
+			spi-max-frequency = <4800000>; //Max Frequency for Device
+			pinctrl-names     = "fpc1020_reset_reset",
+					    "fpc1020_reset_active";
+			pinctrl-0         = <&fpc1020_reset_reset>;
+			pinctrl-1         = <&fpc1020_reset_active>;
+                 };
+
+	};
+*/
+
+/* htc audio removed ++ */
+/* int_codec:
 	 sound {
 		compatible = "qcom,msm8952-audio-codec";
 		qcom,model = "msm8952-snd-card-mtp";
@@ -292,6 +292,7 @@
 		qcom,master-en = <1>;
 		status = "okay";
 	};
+*//* htc audio removed -- */
 };
 
 &blsp1_uart2 {
@@ -300,12 +301,17 @@
 	pinctrl-0 = <&uart_console_sleep>;
 };
 
+/* htc_battery_porting +++ */
+/*
 /{
 	mtp_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
 		#include "batterydata-itech-3000mah-4200mv.dtsi"
 		#include "batterydata-itech-3000mah.dtsi"
 	};
+
+
+
 };
 
 &pmi8950_fg {
@@ -317,26 +323,10 @@
 	qcom,chg-led-support;
 	qcom,chg-led-sw-controls;
 };
+*/
+/* htc_battery_porting --- */
 
 &spmi_bus {
-	qcom,pm8950@0 {
-		qcom,leds@a300 {
-			status = "okay";
-			qcom,led_mpp_4 {
-				label = "mpp";
-				linux,name = "button-backlight";
-				linux,default-trigger = "none";
-				qcom,default-state = "off";
-				qcom,max-current = <40>;
-				qcom,current-setting = <5>;
-				qcom,id = <6>;
-				qcom,mode = "manual";
-				qcom,source-sel = <1>;
-				qcom,mode-ctrl = <0x60>;
-			};
-		};
-	};
-
 	qcom,pmi8950@3 {
 		qcom,leds@d300 {
 			compatible = "qcom,qpnp-flash-led";
@@ -352,6 +342,7 @@
 
 &sdhc_1 {
 	vdd-supply = <&pm8950_l8>;
+	qcom,vdd-always-on;
 	qcom,vdd-voltage-level = <2900000 2900000>;
 	qcom,vdd-current-level = <200 570000>;
 
@@ -367,6 +358,8 @@
 
 	qcom,nonremovable;
 
+	htc,slot-type = <0>;
+
 	status = "ok";
 };
 
@@ -379,9 +372,10 @@
 	qcom,vdd-io-voltage-level = <1800000 2950000>;
 	qcom,vdd-io-current-level = <200 22000>;
 
-	pinctrl-names = "active", "sleep";
+	pinctrl-names = "active", "active_sdr104", "sleep";
 	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
-	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_off>;
+	pinctrl-1 = <&sdc2_clk_on_sdr104 &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
+	pinctrl-2 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_off>;
 
 	#address-cells = <0>;
 	interrupt-parent = <&sdhc_2>;
@@ -394,13 +388,18 @@
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
 	cd-gpios = <&msm_gpio 67 0x1>;
 
+	htc,slot-type = <1>;
+
 	status = "ok";
 };
+
+#include "dsi-panel-hiaaero.dtsi"
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 };
 
+/*
 &dsi_truly_1080_vid {
 	qcom,mdss-dsi-pan-enable-dynamic-fps;
 	qcom,mdss-dsi-pan-fps-update = "dfps_immediate_porch_mode_vfp";
@@ -408,30 +407,25 @@
 };
 
 &pmx_mdss {
-	qcom,num-grp-pins = <3>;
-	qcom,pins = <&gp 90>, <&gp 0>, <&gp 91>;
+	qcom,num-grp-pins = <1>;
+	qcom,pins = <&gp 61>;
 };
+
 
 &pmx_mdss_te {
 	qcom,num-grp-pins = <1>;
 	qcom,pins = <&gp 24>;
 };
+*/
 
 &mdss_dsi0 {
 	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
-	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+	pinctrl-0 = <&lcm_te_active>;
+	pinctrl-1 = <&lcm_te_suspend>;
+	qcom,platform-reset-gpio = <&msm_gpio 61 0>;
+	qcom,platform-te-gpio = <&msm_gpio 24 0>;
+	htc,vdd1v8-gpio = <&msm_gpio 129 0>;
 	qcom,dsi-pref-prim-pan = <&dsi_truly_1080_vid>;
-
-	qcom,platform-enable-gpio = <&msm_gpio 90 0>;
-	qcom,platform-reset-gpio = <&msm_gpio 0 0>;
-	qcom,platform-bklight-en-gpio = <&msm_gpio 91 0>;
-};
-
-&dsi_truly_1080_cmd {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,ulps-enabled;
-	qcom,panel-roi-alignment = <2 2 4 2 1080 2>;
 };
 
 &labibb {

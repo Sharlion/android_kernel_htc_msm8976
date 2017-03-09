@@ -111,8 +111,8 @@
 		qcom,msm-vdd-wsa-switch-voltage = <3075000>;
 		qcom,msm-vdd-wsa-switch-current = <5000>;
 	};
-
-	i2c@7af8000 {
+//HTC_AUDIO_START
+	/*i2c@7af8000 {
 		wsa881x-i2c-codec@e {
 			compatible = "qcom,wsa881x-i2c-codec";
 			reg = <0x0e>;
@@ -186,7 +186,8 @@
 			compatible = "qcom,wsa881x-i2c-codec";
 			reg = <0x45>;
 		};
-	};
+	};*/
+//HTC_AUDIO_END
 };
 
 &slim_msm{

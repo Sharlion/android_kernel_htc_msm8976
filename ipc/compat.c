@@ -121,9 +121,6 @@ static inline int compat_ipc_parse_version(int *cmd)
 #ifdef	CONFIG_ARCH_WANT_COMPAT_IPC_PARSE_VERSION
 	int version = *cmd & IPC_64;
 
-	/* this is tricky: architectures that have support for the old
-	 * ipc structures in 64 bit binaries need to have IPC_64 set
-	 * in cmd, the others need to have it cleared */
 #ifndef ipc_parse_version
 	*cmd |= IPC_64;
 #else
@@ -131,7 +128,7 @@ static inline int compat_ipc_parse_version(int *cmd)
 #endif
 	return version;
 #else
-	/* With the asm-generic APIs, we always use the 64-bit versions. */
+	
 	return IPC_64;
 #endif
 }
@@ -273,6 +270,11 @@ static long do_compat_semctl(int first, int second, int third, u32 pad)
 	case IPC_STAT:
 	case SEM_STAT:
 		up64 = compat_alloc_user_space(sizeof(s64));
+		if (unlikely(!up64))
+		{
+			err = -EFAULT;
+			break;
+		}
 		fourth = (unsigned long)up64;
 		err = sys_semctl(first, second, third, fourth);
 		if (err < 0)
@@ -294,6 +296,11 @@ static long do_compat_semctl(int first, int second, int third, u32 pad)
 			err = get_compat_semid_ds(&s64, compat_ptr(pad));
 		}
 		up64 = compat_alloc_user_space(sizeof(s64));
+		if (unlikely(!up64))
+		{
+			err = -EFAULT;
+			break;
+		}
 		if (copy_to_user(up64, &s64, sizeof(s64)))
 			err = -EFAULT;
 		if (err)
@@ -335,12 +342,12 @@ COMPAT_SYSCALL_DEFINE6(ipc, u32, call, int, first, int, second,
 	int version;
 	u32 pad;
 
-	version = call >> 16; /* hack for backward compatibility */
+	version = call >> 16; 
 	call &= 0xffff;
 
 	switch (call) {
 	case SEMOP:
-		/* struct sembuf is the same on 32 and 64bit :)) */
+		
 		return sys_semtimedop(first, compat_ptr(ptr), second, NULL);
 	case SEMTIMEDOP:
 		return compat_sys_semtimedop(first, compat_ptr(ptr), second,
@@ -523,6 +530,11 @@ long compat_sys_msgctl(int first, int second, void __user *uptr)
 		if (err)
 			break;
 		p = compat_alloc_user_space(sizeof(m64));
+		if (unlikely(!p))
+		{
+			err = -EFAULT;
+			break;
+		}
 		if (copy_to_user(p, &m64, sizeof(m64)))
 			err = -EFAULT;
 		else
@@ -532,6 +544,11 @@ long compat_sys_msgctl(int first, int second, void __user *uptr)
 	case IPC_STAT:
 	case MSG_STAT:
 		p = compat_alloc_user_space(sizeof(m64));
+		if (unlikely(!p))
+		{
+			err = -EFAULT;
+			break;
+		}
 		err = sys_msgctl(first, second, p);
 		if (err < 0)
 			break;
@@ -687,6 +704,11 @@ long compat_sys_shmctl(int first, int second, void __user *uptr)
 
 	case IPC_INFO:
 		p = compat_alloc_user_space(sizeof(smi));
+		if (unlikely(!p))
+		{
+			err = -EFAULT;
+			break;
+		}
 		err = sys_shmctl(first, second, p);
 		if (err < 0)
 			break;
@@ -710,6 +732,11 @@ long compat_sys_shmctl(int first, int second, void __user *uptr)
 		if (err)
 			break;
 		p = compat_alloc_user_space(sizeof(s64));
+		if (unlikely(!p))
+		{
+			err = -EFAULT;
+			break;
+		}
 		if (copy_to_user(p, &s64, sizeof(s64)))
 			err = -EFAULT;
 		else
@@ -756,6 +783,8 @@ long compat_sys_semtimedop(int semid, struct sembuf __user *tsems,
 	if (timeout) {
 		struct timespec ts;
 		ts64 = compat_alloc_user_space(sizeof(*ts64));
+		if (unlikely(!ts64))
+			return -EFAULT;
 		if (get_compat_timespec(&ts, timeout))
 			return -EFAULT;
 		if (copy_to_user(ts64, &ts, sizeof(ts)))

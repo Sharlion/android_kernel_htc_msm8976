@@ -280,13 +280,18 @@ static void *arm64_swiotlb_alloc_noncoherent(struct device *dev, size_t size,
 	order = get_order(size);
 
 	ptr = arm64_swiotlb_alloc_coherent(dev, size, dma_handle, flags, attrs);
-	if (!ptr)
+	if (!ptr) {
+		printk("%s: arm64_swiotlb_alloc_coherent failed\n", __func__);
 		goto no_mem;
+	}
 
-	if (!(flags & __GFP_WAIT))
+	if (!(flags & __GFP_WAIT)) {
+		printk("%s: !(flags & __GFP_WAIT)\n", __func__);
 		return ptr;
+	}
 
 	if (dma_get_attr(DMA_ATTR_NO_KERNEL_MAPPING, attrs)) {
+		printk("%s: coherent_ptr == NO_KERNEL_MAPPING_DUMMY\n", __func__);
 		coherent_ptr = (void *)NO_KERNEL_MAPPING_DUMMY;
 
 	} else {
@@ -298,8 +303,10 @@ static void *arm64_swiotlb_alloc_noncoherent(struct device *dev, size_t size,
 			      (flags & ~GFP_DMA) | __GFP_NOWARN);
 		if (!map) {
 			map = vmalloc(sizeof(struct page *) << order);
-			if (!map)
+			if (!map) {
+				printk("%s: vmalloc failed\n", __func__);
 				goto no_map;
+			}
 		}
 
 		/* create a coherent mapping */
@@ -308,8 +315,10 @@ static void *arm64_swiotlb_alloc_noncoherent(struct device *dev, size_t size,
 			map[i] = page + i;
 		coherent_ptr = vmap(map, size >> PAGE_SHIFT, VM_MAP, prot);
 		kvfree(map);
-		if (!coherent_ptr)
+		if (!coherent_ptr) {
+			printk("%s: vmap failed\n", __func__);
 			goto no_map;
+		}
 	}
 
 	return coherent_ptr;

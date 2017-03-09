@@ -8,6 +8,7 @@
 #include <linux/scatterlist.h>
 
 #include "blk.h"
+extern atomic_t vfs_emergency_remount;
 
 struct bio_batch {
 	atomic_t		done;
@@ -133,8 +134,12 @@ int blkdev_issue_discard(struct block_device *bdev, sector_t sector,
 	blk_finish_plug(&plug);
 
 	/* Wait for bios in-flight */
-	if (!atomic_dec_and_test(&bb.done))
-		wait_for_completion_io(&wait);
+	if (!atomic_dec_and_test(&bb.done)) {
+		if (atomic_read(&vfs_emergency_remount))
+			wait_for_completion_io_timeout(&wait, msecs_to_jiffies(5000));
+		else
+			wait_for_completion_io(&wait);
+	}
 
 	if (!test_bit(BIO_UPTODATE, &bb.flags))
 		ret = -EIO;

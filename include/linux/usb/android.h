@@ -36,8 +36,22 @@ struct android_usb_platform_data {
 	u8 usb_core_id;
 	char streaming_func[MAX_STREAMING_FUNCS][FUNC_NAME_LEN];
 	int  streaming_func_count;
+	/*++ 2015/5/21 USB Team, PCN00005 ++*/
+	/* For multiple serial function support
+	 * Ex: "tty:serial[,sdio:modem_mdm][,smd:modem]"
+	 */
+	const char *fserial_init_string;
+	/*-- 2015/5/21 USB Team, PCN00005 --*/
+
 	u8 uicc_nluns;
 	bool cdrom;
+	u32 nluns;/*++ 2015/6/4, USB Team, PCN00024 ++*/
+	const char *diag_client_interface;/*++ 2015/5/21 USB Team, PCN00003 ++*/
+	const char *rmnet_transports_interface;/*++ 2015/5/29 USB Team, PCN00013 ++*/
+/*++ 2015/06/29, USB Team, PCN00049 ++*/
+	char *product_name;
+	char *manufacturer_name;
+/*-- 2015/06/29, USB Team, PCN00049 --*/
 };
 
 #ifndef CONFIG_TARGET_CORE

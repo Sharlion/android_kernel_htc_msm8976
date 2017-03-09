@@ -1,0 +1,64 @@
+&modem_mem {
+	htc,ramdump-heap;
+};
+
+&qseecom_mem {
+	htc,ramdump-heap;
+};
+
+&audio_mem {
+	htc,ramdump-heap;
+};
+
+&venus_mem {
+	htc,ramdump-heap;
+};
+
+&reloc_mem {
+	htc,ramdump-heap;
+};
+
+&secure_mem {
+	htc,ramdump-heap;
+};
+
+&adsp_mem {
+	htc,ramdump-heap;
+};
+
+&ramoops_mem {
+	htc,ramdump-heap;
+};
+
+&htc_reserve_region {
+	htc,ramdump-heap;
+};
+
+&htc_smlog_mem {
+	htc,ramdump-heap;
+};
+
+&fb_mem {
+    htc,ramdump-heap;
+};
+
+&htc_ramdump_backup_mem {
+    htc,ramdump-heap;
+};
+
+&soc {
+	qcom,ion {
+
+		qcom,ion-heap@8 { /* CP_MM HEAP */
+			htc,ramdump-heap;
+		};
+
+		qcom,ion-heap@28 { /* adsp heap  */
+			htc,ramdump-heap;
+		};
+	};
+
+	qcom,msm-rtb {
+		htc,ramdump-heap;
+	};
+};

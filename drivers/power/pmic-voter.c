@@ -18,7 +18,7 @@
 
 #include "pmic-voter.h"
 
-#define NUM_MAX_CLIENTS	8
+#define NUM_MAX_CLIENTS	15
 
 struct client_vote {
 	int	state;
@@ -186,10 +186,6 @@ int vote(struct votable *votable, int client_id, bool state, int val)
 		goto out;
 	}
 
-	/*
-	 * If the votable does not have any votes it will maintain the last
-	 * known effective_result and effective_client_id
-	 */
 	if (effective_id < 0) {
 		pr_debug("%s: no votes; skipping callback\n", votable->name);
 		goto out;
@@ -252,10 +248,6 @@ struct votable *create_votable(struct device *dev, const char *name,
 	votable->default_result = default_result;
 	mutex_init(&votable->vote_lock);
 
-	/*
-	 * Because effective_result and client states are invalid
-	 * before the first vote, initialize them to -EINVAL
-	 */
 	votable->effective_result = -EINVAL;
 	votable->effective_client_id = -EINVAL;
 
@@ -264,3 +256,20 @@ struct votable *create_votable(struct device *dev, const char *name,
 
 	return votable;
 }
+
+#ifdef CONFIG_HTC_BATT_8960
+int get_client_voter_state(struct votable *votable, int client_id)
+{
+        int value;
+
+        lock_votable(votable);
+        value = get_client_voter_state_locked(votable, client_id);
+        unlock_votable(votable);
+        return value;
+}
+
+int get_client_voter_state_locked(struct votable *votable, int client_id)
+{
+        return votable->votes[client_id].state;
+}
+#endif 

@@ -23,7 +23,7 @@
 	(config_val >= min) && (config_val <= max))
 
 #undef CDBG
-#define CDBG(fmt, args...) pr_debug(fmt, ##args)
+#define CDBG(fmt, args...) pr_info("[CAM]"fmt, ##args)
 
 int msm_camera_fill_vreg_params(struct camera_vreg_t *cam_vreg,
 	int num_vreg, struct msm_sensor_power_setting *power_setting,
@@ -952,7 +952,14 @@ int msm_camera_init_gpio_pin_tbl(struct device_node *of_node,
 		rc = 0;
 	}
 
+	pr_err("%s:%d gpio-standby val = %d\n",
+					__func__, __LINE__, val);
 	rc = of_property_read_u32(of_node, "qcom,gpio-standby", &val);
+	pr_err("%s:%d gpio-standby rc = %d\n",
+					__func__, __LINE__, rc);
+	pr_err("%s:%d gpio-standby val = %d\n",
+					__func__, __LINE__, val);
+
 	if (rc != -EINVAL) {
 		if (rc < 0) {
 			pr_err("%s:%d read qcom,gpio-standby failed rc %d\n",
@@ -1183,6 +1190,20 @@ int msm_camera_get_dt_vreg_data(struct device_node *of_node,
 		rc = 0;
 	}
 
+	//HTC_CAM_START
+	rc = of_property_read_u32_array(of_node, "qcom,cam-vreg-type",
+		vreg_array, count);
+	if (rc < 0) {
+		pr_err("%s failed %d\n", __func__, __LINE__);
+		goto ERROR2;
+	}
+	for (i = 0; i < count; i++) {
+		vreg[i].type = vreg_array[i];
+		CDBG("%s cam_vreg[%d].type = %d\n", __func__, i,
+			vreg[i].type);
+	}
+	//HTC_CAM_END
+
 	rc = of_property_read_u32_array(of_node, "qcom,cam-vreg-min-voltage",
 		vreg_array, count);
 	if (rc < 0) {
@@ -1218,6 +1239,20 @@ int msm_camera_get_dt_vreg_data(struct device_node *of_node,
 		CDBG("%s cam_vreg[%d].op_mode = %d\n", __func__, i,
 			vreg[i].op_mode);
 	}
+
+	//HTC_CAM_START
+	rc = of_property_read_u32_array(of_node, "qcom,cam-vreg-gpios-index",
+		vreg_array, count);
+	if (rc < 0) {
+		pr_err("%s failed %d\n", __func__, __LINE__);
+		goto ERROR2;
+	}
+	for (i = 0; i < count; i++) {
+		vreg[i].gpios_index = vreg_array[i];
+		CDBG("%s cam_vreg[%d].gpios_index = %d\n", __func__, i,
+			vreg[i].gpios_index);
+	}
+	//HTC_CAM_END
 
 	kfree(vreg_array);
 	return rc;
@@ -1285,6 +1320,9 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 {
 	int rc = 0, index = 0, no_gpio = 0, ret = 0;
 	struct msm_sensor_power_setting *power_setting = NULL;
+	//HTC_CAM_START
+	struct camera_vreg_t *cam_vreg;
+	//HTC_CAM_END
 
 	CDBG("%s:%d\n", __func__, __LINE__);
 	if (!ctrl || !sensor_i2c_client) {
@@ -1357,7 +1395,7 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 			if (!ctrl->gpio_conf->gpio_num_info->valid
 				[power_setting->seq_val])
 				continue;
-			CDBG("%s:%d gpio set val %d\n", __func__, __LINE__,
+			pr_err("%s:%d gpio set val %d\n", __func__, __LINE__,
 				ctrl->gpio_conf->gpio_num_info->gpio_num
 				[power_setting->seq_val]);
 			gpio_set_value_cansleep(
@@ -1374,13 +1412,24 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 					SENSOR_GPIO_MAX);
 				goto power_up_failed;
 			}
-			if (power_setting->seq_val < ctrl->num_vreg)
+			if (power_setting->seq_val < ctrl->num_vreg) {
+				pr_err("%s:%d:seq_val:%d > num_vreg: %d\n",
+					__func__, __LINE__, power_setting->seq_val,
+					ctrl->num_vreg);
+			//HTC_CAM_START
+			cam_vreg = &ctrl->cam_vreg[power_setting->seq_val];
+			if (cam_vreg->type == VREG_TYPE_GPIO) {
+				unsigned cam_vreg_gpio;
+				cam_vreg_gpio = ctrl->gpio_conf->cam_gpio_req_tbl[cam_vreg->gpios_index].gpio;
+				gpio_direction_output(cam_vreg_gpio, power_setting->config_val);
+			} else {
 				msm_camera_config_single_vreg(ctrl->dev,
-					&ctrl->cam_vreg
-					[power_setting->seq_val],
-					(struct regulator **)
-					&power_setting->data[0],
+					cam_vreg,
+					(struct regulator **)&power_setting->data[0],
 					1);
+			}
+			//HTC_CAM_END
+			}
 			else
 				pr_err("ERR:%s: %d usr_idx:%d dts_idx:%d\n",
 					__func__, __LINE__,
@@ -1510,6 +1559,9 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 	int index = 0, ret = 0;
 	struct msm_sensor_power_setting *pd = NULL;
 	struct msm_sensor_power_setting *ps;
+	//HTC_CAM_START
+	struct camera_vreg_t *cam_vreg;
+	//HTC_CAM_END
 
 	CDBG("%s:%d\n", __func__, __LINE__);
 	if (!ctrl || !sensor_i2c_client) {
@@ -1553,10 +1605,19 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 			if (!ctrl->gpio_conf->gpio_num_info->valid
 				[pd->seq_val])
 				continue;
-			gpio_set_value_cansleep(
+			pr_err("%s:%d gpio set val %d\n", __func__, __LINE__,
 				ctrl->gpio_conf->gpio_num_info->gpio_num
-				[pd->seq_val],
-				(int) pd->config_val);
+				[pd->seq_val]);
+			//HTC_CAM_START
+				if(pd->config_val == GPIO_OUT_HIGH)
+					gpio_set_value_cansleep(
+						ctrl->gpio_conf->gpio_num_info->gpio_num
+						[pd->seq_val], GPIOF_OUT_INIT_LOW);
+				else
+					gpio_set_value_cansleep(
+						ctrl->gpio_conf->gpio_num_info->gpio_num
+						[pd->seq_val], GPIOF_OUT_INIT_HIGH);
+			//HTC_CAM_END
 			break;
 		case SENSOR_VREG:
 			if (pd->seq_val == INVALID_VREG)
@@ -1572,13 +1633,24 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 						pd->seq_type,
 						pd->seq_val);
 			if (ps) {
-				if (pd->seq_val < ctrl->num_vreg)
+				if (pd->seq_val < ctrl->num_vreg) {
+				//HTC_CAM_START
+				cam_vreg = &ctrl->cam_vreg[pd->seq_val];
+				if (cam_vreg->type == VREG_TYPE_GPIO) {
+					unsigned cam_vreg_gpio;
+					cam_vreg_gpio = ctrl->gpio_conf->cam_gpio_req_tbl[cam_vreg->gpios_index].gpio;
+					gpio_direction_output(cam_vreg_gpio, 0);
+				} else {
 					msm_camera_config_single_vreg(ctrl->dev,
-						&ctrl->cam_vreg
-						[pd->seq_val],
-						(struct regulator **)
-						&ps->data[0],
+						cam_vreg,
+						(struct regulator **)&ps->data[0],
 						0);
+				}
+				//HTC_CAM_END
+					pr_err("%s:%d:seq_val:%d > num_vreg: %d\n",
+						__func__, __LINE__, pd->seq_val,
+						ctrl->num_vreg);
+				}
 				else
 					pr_err("%s:%d:seq_val:%d > num_vreg: %d\n",
 						__func__, __LINE__, pd->seq_val,

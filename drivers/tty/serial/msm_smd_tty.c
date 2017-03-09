@@ -37,6 +37,8 @@
 #include <soc/qcom/smsm.h>
 #include <soc/qcom/subsystem_restart.h>
 
+#include "htc_bdaddress.h" //HTC_BT++
+
 #define MODULE_NAME "msm_smdtty"
 #define MAX_SMD_TTYS 37
 #define MAX_TTY_BUF_SIZE 2048
@@ -169,6 +171,7 @@ static struct smd_config smd_configs[] = {
 	{7, "DATA1", NULL, SMD_APPS_MODEM},
 	{8, "DATA4", NULL, SMD_APPS_MODEM},
 	{11, "DATA11", NULL, SMD_APPS_MODEM},
+	{20, "DATA20", NULL, SMD_APPS_MODEM},
 	{21, "DATA21", NULL, SMD_APPS_MODEM},
 	{27, "GPSNMEA", NULL, SMD_APPS_MODEM},
 	{36, "LOOPBACK", "LOOPBACK_TTY", SMD_APPS_MODEM},
@@ -1071,6 +1074,8 @@ out:
 static int msm_smd_tty_probe(struct platform_device *pdev)
 {
 	int ret;
+
+    bt_export_bd_address(); //HTC_BT++
 
 	if (pdev) {
 		if (pdev->dev.of_node) {

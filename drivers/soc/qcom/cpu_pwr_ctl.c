@@ -10,8 +10,6 @@
  * GNU General Public License for more details.
  */
 
-/* MSM CPU Subsystem power control operations
- */
 
 #include <linux/bitops.h>
 #include <linux/cpu.h>
@@ -31,11 +29,9 @@
 #include <asm/cacheflush.h>
 #include <asm/smp_plat.h>
 
-/* CPU power domain register offsets */
 #define CPU_PWR_CTL		0x4
 #define CPU_PWR_GATE_CTL	0x14
 
-/* L2 power domain register offsets */
 #define L2_PWR_CTL_OVERRIDE	0xc
 #define L2_PWR_CTL		0x14
 #define L2_PWR_STATUS		0x18
@@ -53,23 +49,23 @@
 
 static bool vctl_parsed;
 
-/*
- * struct msm_l2ccc_of_info: represents of data for l2 cache clock controller.
- * @compat: compat string for l2 cache clock controller
- * @l2_pon: l2 cache power on routine
- */
 struct msm_l2ccc_of_info {
 	const char *compat;
 	int (*l2_power_on) (struct device_node *dn, u32 l2_mask, int cpu);
 	u32 l2_power_on_mask;
 };
 
+#define L2_SPM_STS_POLL_MAX_TIME (10000) 
+#define L2_SPM_STS_POLL_TIME_THRES (10) 
+
+volatile static int htc_l2_spm_sts_poll_time_max = 0;
+
 static int kick_l2spm(struct device_node *l2ccc_node,
 				struct device_node *vctl_node)
 {
 	struct resource res, acinactm_res;
 	int val;
-	int timeout = 10, ret = 0;
+	int timeout = L2_SPM_STS_POLL_MAX_TIME, ret = 0;
 	void __iomem *l2spm_base = of_iomap(vctl_node, 0);
 	bool use_acinactm = false;
 	int index;
@@ -86,9 +82,6 @@ static int kick_l2spm(struct device_node *l2ccc_node,
 	if (ret)
 		goto bail_l2_pwr_bit;
 
-	/* L2 is executing sleep state machine,
-	 * let's softly kick it awake
-	 */
 	val = scm_io_read((u32)res.start);
 	val |= BIT(0);
 	scm_io_write((u32)res.start, val);
@@ -107,15 +100,17 @@ static int kick_l2spm(struct device_node *l2ccc_node,
 		scm_io_write((u32)acinactm_res.start, val);
 	}
 
-	/* Wait until the SPM status indicates that the PWR_CTL
-	 * bits are clear.
-	 */
 	while (readl_relaxed(l2spm_base + L2_SPM_STS) & 0xFFFF0000) {
 		BUG_ON(!timeout--);
 		cpu_relax();
 		usleep(100);
 	}
 
+	if (htc_l2_spm_sts_poll_time_max < (L2_SPM_STS_POLL_MAX_TIME - timeout)) {
+		htc_l2_spm_sts_poll_time_max = L2_SPM_STS_POLL_MAX_TIME - timeout;
+		if (htc_l2_spm_sts_poll_time_max > L2_SPM_STS_POLL_TIME_THRES)
+			pr_err("[Power_SPM]kick_l2spm: Update max wait time, %d ms\n", htc_l2_spm_sts_poll_time_max/10);
+	}
 bail_l2_pwr_bit:
 	iounmap(l2spm_base);
 	return ret;
@@ -138,17 +133,17 @@ static int power_on_l2_msm8976(struct device_node *l2ccc_node, u32 pon_mask,
 	if (!l2_base)
 		return -ENOMEM;
 
-	/* Skip power-on sequence if l2 cache is already powered up */
+	
 	pon_status = (__raw_readl(l2_base + L2_PWR_CTL) & pon_mask)
 				== pon_mask;
-	/* Check L2 SPM Status */
+	
 	if (pon_status) {
 		ret = kick_l2spm(l2ccc_node, vctl_node);
 		iounmap(l2_base);
 		return ret;
 	}
 
-	/* Need to power on the rail */
+	
 	ret = of_property_read_u32(l2ccc_node, "qcom,vctl-val", &val);
 	if (ret) {
 		iounmap(l2_base);
@@ -163,58 +158,58 @@ static int power_on_l2_msm8976(struct device_node *l2ccc_node, u32 pon_mask,
 		return -EFAULT;
 	}
 
-	/* Close Few of the head-switches for L2SCU logic */
+	
 	writel_relaxed(0x10F700, l2_base + L2_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* Close Rest of the head-switches for L2SCU logic */
+	
 	writel_relaxed(0x410F700, l2_base + L2_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* Assert PRESETDBG */
+	
 	writel_relaxed(0x400000, l2_base + L2_PWR_CTL_OVERRIDE);
 	mb();
 	udelay(2);
 
-	/* De-assert L2/SCU memory Clamp */
+	
 	writel_relaxed(0x4103700, l2_base + L2_PWR_CTL);
-	/* Assert L2 memory slp_nret_n */
+	
 	writel_relaxed(0x4103703, l2_base + L2_PWR_CTL);
 	mb();
 	udelay(4);
-	/* Assert L2 memory slp_ret_n */
+	
 	writel_relaxed(0x4101703, l2_base + L2_PWR_CTL);
 	mb();
 	udelay(4);
-	/* Assert L2 memory wl_en_clk */
+	
 	writel_relaxed(0x4101783, l2_base + L2_PWR_CTL);
 	mb();
 	udelay(1);
-	/* De-assert L2 memory wl_en_clk */
+	
 	writel_relaxed(0x4101703, l2_base + L2_PWR_CTL);
 	mb();
-	/* Enable clocks via SW_CLK_EN */
+	
 	writel_relaxed(0x01, l2_base + L2_CORE_CBCR);
 
-	/* De-assert L2/SCU logic clamp */
+	
 	writel_relaxed(0x4101603, l2_base + L2_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* De-assert PRESETDBG */
+	
 	writel_relaxed(0x0, l2_base + L2_PWR_CTL_OVERRIDE);
 
-	/* De-assert L2/SCU Logic reset */
+	
 	writel_relaxed(0x4100203, l2_base + L2_PWR_CTL);
 	mb();
 	udelay(54);
 
-	/* Turn on the PMIC_APC */
+	
 	writel_relaxed(0x14100203, l2_base + L2_PWR_CTL);
 
-	/* Set H/W clock control for the cluster CBC block */
+	
 	writel_relaxed(0x03, l2_base + L2_CORE_CBCR);
 	mb();
 	iounmap(l2_base);
@@ -238,10 +233,10 @@ static int power_on_l2_msm8916(struct device_node *l2ccc_node, u32 pon_mask,
 	if (!l2_base)
 		return -ENOMEM;
 
-	/* Skip power-on sequence if l2 cache is already powered up*/
+	
 	pon_status = (__raw_readl(l2_base + L2_PWR_CTL) & pon_mask)
 				== pon_mask;
-	/* Check L2 SPM Status */
+	
 	if (pon_status) {
 		if (vctl_node)
 			ret = kick_l2spm(l2ccc_node, vctl_node);
@@ -249,42 +244,42 @@ static int power_on_l2_msm8916(struct device_node *l2ccc_node, u32 pon_mask,
 		return ret;
 	}
 
-	/* Close L2/SCU Logic GDHS and power up the cache */
+	
 	writel_relaxed(0x10D700, l2_base + L2_PWR_CTL);
 
-	/* Assert PRESETDBGn */
+	
 	writel_relaxed(0x400000, l2_base + L2_PWR_CTL_OVERRIDE);
 	mb();
 	udelay(2);
 
-	/* De-assert L2/SCU memory Clamp */
+	
 	writel_relaxed(0x101700, l2_base + L2_PWR_CTL);
 
-	/* Wakeup L2/SCU RAMs by deasserting sleep signals */
+	
 	writel_relaxed(0x101703, l2_base + L2_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* Enable clocks via SW_CLK_EN */
+	
 	writel_relaxed(0x01, l2_base + L2_CORE_CBCR);
 
-	/* De-assert L2/SCU logic clamp */
+	
 	writel_relaxed(0x101603, l2_base + L2_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* De-assert PRESSETDBg */
+	
 	writel_relaxed(0x0, l2_base + L2_PWR_CTL_OVERRIDE);
 
-	/* De-assert L2/SCU Logic reset */
+	
 	writel_relaxed(0x100203, l2_base + L2_PWR_CTL);
 	mb();
 	udelay(54);
 
-	/* Turn on the PMIC_APC */
+	
 	writel_relaxed(0x10100203, l2_base + L2_PWR_CTL);
 
-	/* Set H/W clock control for the cpu CBC block */
+	
 	writel_relaxed(0x03, l2_base + L2_CORE_CBCR);
 	mb();
 	iounmap(l2_base);
@@ -312,14 +307,14 @@ static int power_on_l2_msm8994(struct device_node *l2ccc_node, u32 pon_mask,
 
 	pon_status = (__raw_readl(l2_base + L2_PWR_CTL) & pon_mask) == pon_mask;
 
-	/* Check L2 SPM Status */
+	
 	if (pon_status) {
 		ret = kick_l2spm(l2ccc_node, vctl_node);
 		iounmap(l2_base);
 		return ret;
 	}
 
-	/* Need to power on the rail */
+	
 	ret = of_property_read_u32(l2ccc_node, "qcom,vctl-val", &val);
 	if (ret) {
 		iounmap(l2_base);
@@ -334,50 +329,47 @@ static int power_on_l2_msm8994(struct device_node *l2ccc_node, u32 pon_mask,
 		return -EFAULT;
 	}
 
-	/* Enable L1 invalidation by h/w */
+	
 	writel_relaxed(0x00000000, l2_base + L1_RST_DIS);
 	mb();
 
-	/* Assert PRESETDBGn */
+	
 	writel_relaxed(0x00400000 , l2_base + L2_PWR_CTL_OVERRIDE);
 	mb();
 
-	/* Close L2/SCU Logic GDHS and power up the cache */
+	
 	writel_relaxed(0x00029716 , l2_base + L2_PWR_CTL);
 	mb();
 	udelay(8);
 
-	/* De-assert L2/SCU memory Clamp */
+	
 	writel_relaxed(0x00023716 , l2_base + L2_PWR_CTL);
 	mb();
 
-	/* Wakeup L2/SCU RAMs by deasserting sleep signals */
+	
 	writel_relaxed(0x0002371E , l2_base + L2_PWR_CTL);
 	mb();
 	udelay(8);
 
-	/* Un-gate clock and wait for sequential waking up
-	 * of L2 rams with a delay of 2*X0 cycles
-	 */
 	writel_relaxed(0x0002371C , l2_base + L2_PWR_CTL);
 	mb();
 	udelay(4);
 
-	/* De-assert L2/SCU logic clamp */
+	
 	writel_relaxed(0x0002361C , l2_base + L2_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* De-assert L2/SCU logic reset */
+	
 	writel_relaxed(0x00022218 , l2_base + L2_PWR_CTL);
 	mb();
 	udelay(4);
 
-	/* Turn on the PMIC_APC */
+	
 	writel_relaxed(0x10022218 , l2_base + L2_PWR_CTL);
 	mb();
 
-	/* De-assert PRESETDBGn */
+	
 	writel_relaxed(0x00000000 , l2_base + L2_PWR_CTL_OVERRIDE);
 	mb();
 	iounmap(l2_base);
@@ -457,12 +449,12 @@ int msm8994_cpu_ldo_config(unsigned int cpu)
 		BUG_ON(1);
 	}
 
-	/* Set LDO_BHS_PWR control register to hardware reset value */
+	
 	val = readl_relaxed(ldo_bhs_reg_base + APC_LDO_BHS_PWR_CTL);
 	val = (val & 0xffffff00) | 0x12;
 	writel_relaxed(val, ldo_bhs_reg_base + APC_LDO_BHS_PWR_CTL);
 
-	/* Program LDO CFG registers */
+	
 	val = readl_relaxed(ldo_bhs_reg_base + APC_LDO_CFG1);
 	val = (val & 0xffffff00) | 0xc2;
 	writel_relaxed(val, ldo_bhs_reg_base + APC_LDO_CFG1);
@@ -476,28 +468,22 @@ int msm8994_cpu_ldo_config(unsigned int cpu)
 	val = (val & 0xff00ffff) | (0x4a << 16);
 	writel_relaxed(val, ldo_bhs_reg_base + APC_LDO_CFG2);
 
-	/* Bring LDO out of reset */
+	
 	ldo_vref_ret = readl_relaxed(ldo_bhs_reg_base + APC_LDO_VREF_CFG);
 	ldo_vref_ret &= ~BIT(16);
 	writel_relaxed(ldo_vref_ret, ldo_bhs_reg_base + APC_LDO_VREF_CFG);
 
-	/* Program the retention voltage */
+	
 	ldo_vref_ret = readl_relaxed(ldo_bhs_reg_base + APC_LDO_VREF_CFG);
 	ldo_vref_ret = (ldo_vref_ret & 0xffff80ff) | (ref_val << 8);
 	writel_relaxed(ldo_vref_ret, ldo_bhs_reg_base + APC_LDO_VREF_CFG);
 
-	/* Write the sequence to latch on the LDO voltage */
+	
 	writel_relaxed(0x0, ldo_bhs_reg_base);
 	writel_relaxed(0x1, ldo_bhs_reg_base);
-	/* After writing 1 to the UPDATE register, '1 xo clk cycle' delay
-	 * is required for the update to take effect. This delay needs to
-	 * start after the reg write is complete. Make sure that the reg
-	 * write is complete using a memory barrier */
 	mb();
 	usleep(1);
 	writel_relaxed(0x0, ldo_bhs_reg_base);
-	/* Use a memory barrier to make sure the reg write is complete before
-	 * the node is unmapped. */
 	mb();
 
 	of_node_put(ldo_node);
@@ -541,10 +527,6 @@ int msm8994_unclamp_secondary_arm_cpu(unsigned int cpu)
 		goto out_l2;
 	}
 
-	/*
-	 * Ensure L2-cache of the CPU is powered on before
-	 * unclamping cpu power rails.
-	 */
 
 	ret = power_on_l2_cache(l2ccc_node, cpu);
 	if (ret) {
@@ -564,40 +546,40 @@ int msm8994_unclamp_secondary_arm_cpu(unsigned int cpu)
 		goto out_acc_reg;
 	}
 
-	/* Assert head switch enable few */
+	
 	writel_relaxed(0x00000001, acc_reg + CPU_PWR_GATE_CTL);
 	mb();
 	udelay(1);
 
-	/* Assert head switch enable rest */
+	
 	writel_relaxed(0x00000003, acc_reg + CPU_PWR_GATE_CTL);
 	mb();
 	udelay(1);
 
-	/* De-assert coremem clamp. This is asserted by default */
+	
 	writel_relaxed(0x00000079, acc_reg + CPU_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* Close coremem array gdhs */
+	
 	writel_relaxed(0x0000007D, acc_reg + CPU_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* De-assert clamp */
+	
 	writel_relaxed(0x0000003D, acc_reg + CPU_PWR_CTL);
 	mb();
 
-	/* De-assert clamp */
+	
 	writel_relaxed(0x0000003C, acc_reg + CPU_PWR_CTL);
 	mb();
 	udelay(1);
 
-	/* De-assert core0 reset */
+	
 	writel_relaxed(0x0000000C, acc_reg + CPU_PWR_CTL);
 	mb();
 
-	/* Assert PWRDUP */
+	
 	writel_relaxed(0x0000008C, acc_reg + CPU_PWR_CTL);
 	mb();
 	iounmap(acc_reg);
@@ -658,7 +640,7 @@ int msm8976_cpu_ldo_config(unsigned int cpu)
 		goto exit_cpu_node;
 	}
 
-	/* Bring LDO out of reset */
+	
 	ldo_vref_ret = readl_relaxed(ldo_bhs_reg_base + APC_LDO_VREF_CFG);
 	ldo_vref_ret &= ~BIT(16);
 	writel_relaxed(ldo_vref_ret, ldo_bhs_reg_base + APC_LDO_VREF_CFG);
@@ -670,23 +652,17 @@ int msm8976_cpu_ldo_config(unsigned int cpu)
 	val = (val & 0xffffff00) | 0x60;
 	writel_relaxed(val, ldo_bhs_reg_base + APC_LDO_RDAC_CTL);
 
-	/* Program the retention voltage */
+	
 	ldo_vref_ret = readl_relaxed(ldo_bhs_reg_base + APC_LDO_VREF_CFG);
 	ldo_vref_ret = (ldo_vref_ret & 0xffff80ff) | (ref_val << 8);
 	writel_relaxed(ldo_vref_ret, ldo_bhs_reg_base + APC_LDO_VREF_CFG);
 
-	/* Write the sequence to latch on the LDO voltage */
+	
 	writel_relaxed(0x0, ldo_bhs_reg_base);
 	writel_relaxed(0x1, ldo_bhs_reg_base);
-	/* After writing 1 to the UPDATE register, '1 xo clk cycle' delay
-	 * is required for the update to take effect. This delay needs to
-	 * start after the reg write is complete. Make sure that the reg
-	 * write is complete using a memory barrier */
 	mb();
 	usleep(1);
 	writel_relaxed(0x0, ldo_bhs_reg_base);
-	/* Use a memory barrier to make sure the reg write is complete before
-	 * the node is unmapped. */
 	mb();
 
 	of_node_put(ldo_node);
@@ -702,87 +678,85 @@ exit_cpu_node:
 static inline void msm8976_unclamp_perf_cluster_cpu(void __iomem *reg)
 {
 
-	/* Assert head switch enable few */
+	
 	writel_relaxed(0x00000001, reg + CPU_PWR_GATE_CTL);
 	mb();
 	udelay(2);
 
-	/* Assert head switch enable rest */
+	
 	writel_relaxed(0x00000003, reg + CPU_PWR_GATE_CTL);
 	mb();
 	udelay(2);
 
-	/* De-assert coremem clamp */
+	
 	writel_relaxed(0x00000079, reg + CPU_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* Close coremem array gdhs */
+	
 	writel_relaxed(0x0000007D, reg + CPU_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* Assert core memories wl_en_clk */
+	
 	writel_relaxed(0x0000407D, reg + CPU_PWR_CTL);
 	mb();
 	udelay(1);
-	/* De-ssert core memories wl_en_clk */
+	
 	writel_relaxed(0x0000007D, reg + CPU_PWR_CTL);
 	mb();
 
-	/* Ungate clock */
+	
 	writel_relaxed(0x0000003D, reg + CPU_PWR_CTL);
 	mb();
-	/* De-assert clamp */
+	
 	writel_relaxed(0x0000003C, reg + CPU_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* Deassert Core-n reset */
+	
 	writel_relaxed(0x0000000C, reg + CPU_PWR_CTL);
 	mb();
 
-	/* Assert PWRDUP */
+	
 	writel_relaxed(0x0000008C, reg + CPU_PWR_CTL);
 	mb();
 }
 
 static inline void msm8976_unclamp_power_cluster_cpu(void __iomem *reg)
 {
-	/* Deassert CPU in sleep state */
+	
 	writel_relaxed(0x00000033, reg + CPU_PWR_CTL);
 	mb();
 
-	/* Program skew between en_few and en_rest to 16 XO clk cycles,
-	close Core logic head switch*/
 	writel_relaxed(0x10000001, reg + CPU_PWR_GATE_CTL);
 	mb();
 	udelay(2);
 
-	/* De-assert coremem clamp */
+	
 	writel_relaxed(0x00000031, reg + CPU_PWR_CTL);
 	mb();
 
-	/* Assert Core memory slp_nret_n */
+	
 	writel_relaxed(0x00000039, reg + CPU_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* Assert Core memory slp_ret_n */
+	
 	writel_relaxed(0x00000239, reg + CPU_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* Deassert Clamp */
+	
 	writel_relaxed(0x00000238, reg + CPU_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* Deassert Core0 reset */
+	
 	writel_relaxed(0x00000208, reg + CPU_PWR_CTL);
 	mb();
 
-	/* Assert PWRDUP; */
+	
 	writel_relaxed(0x00000288, reg + CPU_PWR_CTL);
 	mb();
 }
@@ -819,10 +793,6 @@ int msm8976_unclamp_secondary_arm_cpu(unsigned int cpu)
 		goto out_l2ccc;
 	}
 
-	/*
-	* Ensure L2-cache of the CPU is powered on before
-	* unclamping cpu power rails.
-	*/
 	ret = power_on_l2_cache(l2ccc_node, cpu);
 	if (ret) {
 		pr_err("L2 cache power up failed for CPU%d\n", cpu);
@@ -840,9 +810,6 @@ int msm8976_unclamp_secondary_arm_cpu(unsigned int cpu)
 	else
 		msm8976_unclamp_power_cluster_cpu(reg);
 
-	/* Secondary CPU-N is now alive.
-	 * Allowing L2 Low power modes
-	 */
 	ret = of_address_to_resource(l2ccc_node, 1, &res);
 	if (ret)
 		goto out_l2ccc_1;
@@ -895,9 +862,6 @@ int msm_unclamp_secondary_arm_cpu(unsigned int cpu)
 		goto out_l2;
 	}
 
-	/* Ensure L2-cache of the CPU is powered on before
-	 * unclamping cpu power rails.
-	 */
 	ret = power_on_l2_cache(l2ccc_node, cpu);
 	if (ret) {
 		pr_err("L2 cache power up failed for CPU%d\n", cpu);
@@ -910,40 +874,37 @@ int msm_unclamp_secondary_arm_cpu(unsigned int cpu)
 		goto out_acc_reg;
 	}
 
-	/* Assert Reset on cpu-n */
+	
 	writel_relaxed(0x00000033, reg + CPU_PWR_CTL);
 	mb();
 
-	/*Program skew to 16 X0 clock cycles*/
+	
 	writel_relaxed(0x10000001, reg + CPU_PWR_GATE_CTL);
 	mb();
 	udelay(2);
 
-	/* De-assert coremem clamp */
+	
 	writel_relaxed(0x00000031, reg + CPU_PWR_CTL);
 	mb();
 
-	/* Close coremem array gdhs */
+	
 	writel_relaxed(0x00000039, reg + CPU_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* De-assert cpu-n clamp */
+	
 	writel_relaxed(0x00020038, reg + CPU_PWR_CTL);
 	mb();
 	udelay(2);
 
-	/* De-assert cpu-n reset */
+	
 	writel_relaxed(0x00020008, reg + CPU_PWR_CTL);
 	mb();
 
-	/* Assert PWRDUP signal on core-n */
+	
 	writel_relaxed(0x00020088, reg + CPU_PWR_CTL);
 	mb();
 
-	/* Secondary CPU-N is now alive.
-	 * Allowing L2 Low power modes
-	 */
 	if (!vctl_parsed)
 		goto out_l2ccc_1;
 	else {

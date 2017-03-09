@@ -73,6 +73,22 @@ then 3 options can be tried.
 	3. Prepend a NULL packet to the short packet and send both in one burst instead of
 	   combining multiple short packets and sending them in one burst.
 
+- htc,mdss-camera-blk:		Specifies the brightness of camera
+
+- htc,cabc-ui-cmds:			A byte stream formed by multiple dcs packets base on
+					qcom dsi controller protocol.
+
+- htc,cabc-video-cmds:		A byte stream formed by multiple dcs packets base on
+					qcom dsi controller protocol.
+- htc,color-default-cmds:	A byte stream formed by multiple dcs packets base on
+					qcom dsi controller protocol.
+- htc,color-srgb-cmds:		A byte stream formed by multiple dcs packets base on
+					qcom dsi controller protocol.
+
+- htc,cabc-off-cmds:		A byte stream formed by multiple dcs packets base on
+					qcom dsi controller protocol.
+- htc,color-temp-cmds:		A node lists the color temperature setting that base on
+					qcom dsi controller protocol.
 Optional properties:
 - qcom,mdss-dsi-panel-name:		A string used as a descriptive name of the panel
 - qcom,cmd-sync-wait-broadcast:		Boolean used to broadcast dcs command to panels.

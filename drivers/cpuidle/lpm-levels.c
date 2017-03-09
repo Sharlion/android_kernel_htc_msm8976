@@ -50,6 +50,26 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/trace_msm_low_power.h>
 #include "../../drivers/clk/qcom/clock.h"
+#ifdef CONFIG_HTC_POWER_DEBUG
+#include "../soc/qcom/rpm_stats.h"
+#include <linux/qpnp/pin.h>
+#include <linux/pinctrl/pinctrl.h>
+extern int htc_vregs_dump(char *vreg_buffer, int curr_len);
+#endif
+
+#include <soc/qcom/socinfo.h>
+#include <linux/console.h>
+#if defined(CONFIG_HTC_DEBUG_WATCHDOG)
+extern int msm_watchdog_suspend_deferred(void);
+extern int msm_watchdog_resume_deferred(void);
+#else
+static inline int msm_watchdog_suspend_deferred(void) { return 0; }
+static inline int msm_watchdog_resume_deferred(void) { return 0; }
+#endif
+
+#ifdef CONFIG_HTC_DEBUG_FOOTPRINT
+#include <htc_mnemosyne/htc_footprint.h>
+#endif
 
 #define SCLK_HZ (32768)
 #define SCM_HANDOFF_LOCK_ID "S:7"
@@ -120,6 +140,48 @@ module_param_named(
 static bool sleep_disabled;
 module_param_named(sleep_disabled,
 	sleep_disabled, bool, S_IRUGO | S_IWUSR | S_IWGRP);
+
+#ifdef CONFIG_HTC_POWER_DEBUG
+
+enum {
+	MSM_PM_DEBUG_CLOCK = BIT(3),
+	MSM_PM_DEBUG_GPIO = BIT(9),
+	MSM_PM_DEBUG_VREG = BIT(13),
+};
+
+static int msm_pm_debug_mask = 0;
+
+module_param_named(
+        debug_mask, msm_pm_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP
+);
+
+static int htc_pm_debug_mask = 0;
+module_param_named(htc_pm_debug_mask, htc_pm_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
+#endif
+
+static void htc_lpm_pre_action(bool from_idle)
+{
+	int is_last_core_for_suspend = (!from_idle && cpu_online(smp_processor_id()));
+
+	if (is_last_core_for_suspend) {
+		if (suspend_console_deferred)
+			suspend_console();
+
+		msm_watchdog_suspend_deferred();
+	}
+}
+
+static void htc_lpm_post_action(bool from_idle)
+{
+	int is_last_core_for_suspend = (!from_idle && cpu_online(smp_processor_id()));
+
+	if (is_last_core_for_suspend) {
+		msm_watchdog_resume_deferred();
+
+		if (suspend_console_deferred)
+			resume_console();
+	}
+}
 
 s32 msm_cpuidle_get_deep_idle_latency(void)
 {
@@ -202,6 +264,44 @@ static int lpm_cpu_callback(struct notifier_block *cpu_nb,
 	return NOTIFY_OK;
 }
 
+void lpm_cluster_mode_disable(void)
+{
+	struct list_head *list;
+	int i;
+
+	 list_for_each(list, &lpm_root_node->child) {
+		struct lpm_cluster *n;
+
+		n = list_entry(list, typeof(*n), list);
+		if (!n)
+			return;
+		for (i = 0; i < n->nlevels; i++) {
+			struct lpm_level_avail *l = &n->levels[i].available;
+
+			l->idle_enabled = 0;
+		}
+	}
+}
+
+void lpm_cluster_mode_enable(void)
+{
+	struct list_head *list;
+	int i;
+
+	 list_for_each(list, &lpm_root_node->child) {
+		struct lpm_cluster *n;
+
+		n = list_entry(list, typeof(*n), list);
+		if (!n)
+			return;
+		for (i = 0; i < n->nlevels; i++) {
+			struct lpm_level_avail *l = &n->levels[i].available;
+
+			l->idle_enabled = 1;
+		}
+	}
+}
+
 static enum hrtimer_restart lpm_hrtimer_cb(struct hrtimer *h)
 {
 	return HRTIMER_NORESTART;
@@ -247,7 +347,7 @@ int set_l2_mode(struct low_power_ops *ops, int mode, bool notify_rpm)
 		lpm = MSM_SPM_MODE_DISABLED;
 		break;
 	}
-	/* Do not program L2 SPM enable bit. This will be set by TZ */
+	
 	if (lpm_wa_get_skip_l2_spm())
 		rc = msm_spm_config_low_power_mode_addr(ops->spm, lpm,
 							notify_rpm);
@@ -360,11 +460,6 @@ static int cpu_power_select(struct cpuidle_device *dev,
 		if (next_wakeup_us <= pwr_params->time_overhead_us)
 			continue;
 
-		/*
-		 * If wakeup time greater than overhead by a factor of 1000
-		 * assume that core steady state power dominates the power
-		 * equation
-		 */
 		if ((next_wakeup_us >> 10) > lvl_overhead_us) {
 			pwr = pwr_params->ss_power;
 		} else {
@@ -459,12 +554,6 @@ static int cluster_select(struct lpm_cluster *cluster, bool from_idle)
 		latency_us = pm_qos_request_for_cpumask(PM_QOS_CPU_DMA_LATENCY,
 							&mask);
 
-	/*
-	 * If atleast one of the core in the cluster is online, the cluster
-	 * low power modes should be determined by the idle characteristics
-	 * even if the last core enters the low power mode as a part of
-	 * hotplug.
-	 */
 
 	if (!from_idle && num_online_cpus() > 1 &&
 		cpumask_intersects(&cluster->child_cpus, cpu_online_mask))
@@ -578,7 +667,7 @@ static int cluster_configure(struct lpm_cluster *cluster, int idx,
 		msm_mpm_enter_sleep((uint32_t)us, from_idle, cpumask);
 	}
 
-	/* Notify cluster enter event after successfully config completion */
+	
 	cluster_notify(cluster, level, true);
 
 	cluster->last_level = idx;
@@ -620,12 +709,6 @@ static void cluster_prepare(struct lpm_cluster *cluster,
 					&lvl->num_cpu_votes);
 	}
 
-	/*
-	 * cluster_select() does not make any configuration changes. So its ok
-	 * to release the lock here. If a core wakes up for a rude request,
-	 * it need not wait for another to finish its cluster selection and
-	 * configuration process
-	 */
 
 	if (!cpumask_equal(&cluster->num_children_in_sync,
 				&cluster->child_cpus)) {
@@ -719,16 +802,6 @@ static inline void cpu_prepare(struct lpm_cluster *cluster, int cpu_index,
 	struct lpm_cpu_level *cpu_level = &cluster->cpu->levels[cpu_index];
 	unsigned int cpu = raw_smp_processor_id();
 
-	/* Use broadcast timer for aggregating sleep mode within a cluster.
-	 * A broadcast timer could be used in the following scenarios
-	 * 1) The architected timer HW gets reset during certain low power
-	 * modes and the core relies on a external(broadcast) timer to wake up
-	 * from sleep. This information is passed through device tree.
-	 * 2) The CPU low power mode could trigger a system low power mode.
-	 * The low power module relies on Broadcast timer to aggregate the
-	 * next wakeup within a cluster, in which case, CPU switches over to
-	 * use broadcast timer.
-	 */
 	if (from_idle && (cpu_level->use_bc_timer ||
 			(cpu_index >= cluster->min_child_level)))
 		clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &cpu);
@@ -785,12 +858,86 @@ unlock_and_return:
 	return state_id;
 }
 
+#ifdef CONFIG_HTC_POWER_DEBUG
+static char *gpio_sleep_status_info;
+
+int print_gpio_buffer(struct seq_file *m)
+{
+	if (gpio_sleep_status_info)
+		seq_printf(m, gpio_sleep_status_info);
+	else
+		seq_printf(m, "Device haven't suspended yet!\n");
+	return 0;
+}
+EXPORT_SYMBOL(print_gpio_buffer);
+
+int free_gpio_buffer(void)
+{
+	kfree(gpio_sleep_status_info);
+	gpio_sleep_status_info = NULL;
+
+	return 0;
+}
+EXPORT_SYMBOL(free_gpio_buffer);
+
+static char *vreg_sleep_status_info;
+
+int print_vreg_buffer(struct seq_file *m)
+{
+	if (vreg_sleep_status_info)
+		seq_printf(m, vreg_sleep_status_info);
+	else
+		seq_printf(m, "Device haven't suspended yet!\n");
+
+	return 0;
+}
+EXPORT_SYMBOL(print_vreg_buffer);
+
+int free_vreg_buffer(void)
+{
+	kfree(vreg_sleep_status_info);
+	vreg_sleep_status_info = NULL;
+
+	return 0;
+}
+EXPORT_SYMBOL(free_vreg_buffer);
+
+static char *pmic_reg_sleep_status_info;
+
+int print_pmic_reg_buffer(struct seq_file *m)
+{
+	if (pmic_reg_sleep_status_info)
+		seq_printf(m, pmic_reg_sleep_status_info);
+	else
+		seq_printf(m, "Device haven't suspended yet!\n");
+
+	return 0;
+}
+EXPORT_SYMBOL(print_pmic_reg_buffer);
+
+int free_pmic_reg_buffer(void)
+{
+	kfree(pmic_reg_sleep_status_info);
+	pmic_reg_sleep_status_info = NULL;
+
+	return 0;
+}
+EXPORT_SYMBOL(free_pmic_reg_buffer);
+#endif
+
+
 #if !defined(CONFIG_CPU_V7)
 bool psci_enter_sleep(struct lpm_cluster *cluster, int idx, bool from_idle)
 {
 	int affinity_level = 0;
 	int state_id = get_cluster_id(cluster, &affinity_level);
 	int power_state = PSCI_POWER_STATE(cluster->cpu->levels[idx].is_reset);
+	int cpu;
+	bool success = false;
+	bool is_pc = false;
+#ifdef CONFIG_HTC_POWER_DEBUG
+	int curr_len = 0;
+#endif
 
 	affinity_level = PSCI_AFFINITY_LEVEL(affinity_level);
 	if (!idx) {
@@ -798,10 +945,74 @@ bool psci_enter_sleep(struct lpm_cluster *cluster, int idx, bool from_idle)
 		return 1;
 	}
 
+#ifdef CONFIG_HTC_POWER_DEBUG
+	if(!from_idle) {
+		if (MSM_PM_DEBUG_GPIO & msm_pm_debug_mask) {
+			if (gpio_sleep_status_info) {
+				memset(gpio_sleep_status_info, 0,
+					sizeof(*gpio_sleep_status_info));
+			} else {
+				gpio_sleep_status_info = kmalloc(25000, GFP_ATOMIC);
+				if (!gpio_sleep_status_info)
+					pr_err("[PM] kmalloc memory failed in %s\n", __func__);
+			}
+			curr_len = msm_dump_gpios(NULL, curr_len,
+						gpio_sleep_status_info);
+			curr_len = qpnp_pin_dump(NULL, curr_len,
+						gpio_sleep_status_info);
+			pr_info("The MSM_PM_DEBUG_GPIO turn on");
+		}
+
+		if (MSM_PM_DEBUG_VREG & msm_pm_debug_mask) {
+
+			curr_len = 0;
+			if (vreg_sleep_status_info) {
+				memset(vreg_sleep_status_info, 0,
+					sizeof(*vreg_sleep_status_info));
+			} else {
+				vreg_sleep_status_info = kmalloc(25000, GFP_ATOMIC);
+				if (!vreg_sleep_status_info)
+					pr_err("kmalloc memory failed in %s\n", __func__);
+			}
+			curr_len = htc_vregs_dump(vreg_sleep_status_info, curr_len);
+
+			pr_info("The MSM_PM_DEBUG_VREGS turn on");
+		}
+	}
+#endif
+
 	state_id |= (power_state | affinity_level
 				| cluster->cpu->levels[idx].psci_id);
 
+#ifdef CONFIG_HTC_DEBUG_FOOTPRINT
+	cpu = smp_processor_id();
+
+	is_pc = ((cluster->cpu->levels[idx].psci_id == MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE)
+			|| (cluster->cpu->levels[idx].psci_id == MSM_PM_SLEEP_MODE_POWER_COLLAPSE));
+
+	init_cpu_foot_print(cpu, from_idle, is_pc);
+
+	if ((!from_idle && cpu_online(cpu))) {
+		msm_rpm_dump_stat();
+		pr_info("[R] suspend end\n");
+	}
+
+	htc_lpm_pre_action(from_idle);
+
+	success = !cpu_suspend(state_id);
+
+	set_cpu_foot_print(cpu, 0xb);
+
+	htc_lpm_post_action(from_idle);
+	if ((!from_idle && cpu_online(cpu))) {
+		pr_info("[R] resume start\n");
+		msm_rpm_dump_stat();
+	}
+
+	return success;
+#else
 	return !cpu_suspend(state_id);
+#endif
 }
 #elif defined(CONFIG_ARM_PSCI)
 bool psci_enter_sleep(struct lpm_cluster *cluster, int idx, bool from_idle)
@@ -833,6 +1044,9 @@ static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 		struct cpuidle_driver *drv, int index)
 {
 	struct lpm_cluster *cluster = per_cpu(cpu_cluster, dev->cpu);
+#ifdef CONFIG_HTC_DEBUG_FOOTPRINT
+	struct lpm_cpu_level *level;
+#endif
 	int64_t time = ktime_to_ns(ktime_get());
 	bool success = true;
 	int idx = cpu_power_select(dev, cluster->cpu, &index);
@@ -850,6 +1064,10 @@ static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 		dev->last_residency = 0;
 		goto exit;
 	}
+
+#ifdef CONFIG_HTC_DEBUG_FOOTPRINT
+	level = &cluster->cpu->levels[idx];
+#endif
 
 	pwr_params = &cluster->cpu->levels[idx].pwr;
 	sched_set_cpu_cstate(smp_processor_id(), idx + 1,
@@ -1087,18 +1305,17 @@ static int lpm_suspend_enter(suspend_state_t state)
 		update_debug_pc_event(CPU_ENTER, idx, 0xdeaffeed,
 					0xdeaffeed, false);
 
-	/*
-	 * Print the clocks which are enabled during system suspend
-	 * This debug information is useful to know which are the
-	 * clocks that are enabled and preventing the system level
-	 * LPMs(XO and Vmin).
-	 */
 	clock_debug_print_enabled();
+
+#ifdef CONFIG_HTC_POWER_DEBUG
+	if(htc_pm_debug_mask)
+		clock_blocked_print();
+#endif
 
 	if (!use_psci)
 		msm_cpu_pm_enter_sleep(cluster->cpu->levels[idx].mode, false);
 	else
-		psci_enter_sleep(cluster, idx, true);
+		psci_enter_sleep(cluster, idx, false);
 
 	if (idx > 0)
 		update_debug_pc_event(CPU_EXIT, idx, true, 0xdeaffeed,
@@ -1115,30 +1332,46 @@ static const struct platform_suspend_ops lpm_suspend_ops = {
 	.end = lpm_suspend_end,
 };
 
+static int msm_pm_htc_footprint_init(void)
+{
+#ifdef CONFIG_HTC_DEBUG_FOOTPRINT
+	store_pm_boot_entry_addr();
+
+	clean_reset_vector_debug_info(0);
+	init_cpu_foot_print(0, false, true);
+	set_cpu_foot_print(0, 0xb);
+	set_reset_vector_address_after_pc(0);
+	set_reset_vector_value_after_pc(0);
+#endif
+	return 0;
+}
+
+static int msm_pm_htc_init(void)
+{
+        msm_pm_htc_footprint_init();
+
+        suspend_console_deferred = 1;
+
+        return 0;
+}
+
 static int lpm_probe(struct platform_device *pdev)
 {
 	int ret;
 	int size;
 	struct kobject *module_kobj = NULL;
 
-	get_online_cpus();
 	lpm_root_node = lpm_of_parse_cluster(pdev);
 
 	if (IS_ERR_OR_NULL(lpm_root_node)) {
 		pr_err("%s(): Failed to probe low power modes\n", __func__);
-		put_online_cpus();
 		return PTR_ERR(lpm_root_node);
 	}
 
 	if (print_parsed_dt)
 		cluster_dt_walkthrough(lpm_root_node);
 
-	/*
-	 * Register hotplug notifier before broadcast time to ensure there
-	 * to prevent race where a broadcast timer might not be setup on for a
-	 * core.  BUG in existing code but no known issues possibly because of
-	 * how late lpm_levels gets initialized.
-	 */
+	register_hotcpu_notifier(&lpm_cpu_nblk);
 	get_cpu();
 	on_each_cpu(setup_broadcast_timer, (void *)true, 1);
 	put_cpu();
@@ -1149,7 +1382,6 @@ static int lpm_probe(struct platform_device *pdev)
 	if (ret) {
 		pr_err("%s: Failed initializing scm_handoff_lock (%d)\n",
 			__func__, ret);
-		put_online_cpus();
 		return ret;
 	}
 
@@ -1159,13 +1391,12 @@ static int lpm_probe(struct platform_device *pdev)
 	register_cluster_lpm_stats(lpm_root_node, NULL);
 
 	ret = cluster_cpuidle_register(lpm_root_node);
-	put_online_cpus();
 	if (ret) {
 		pr_err("%s()Failed to register with cpuidle framework\n",
 				__func__);
 		goto failed;
 	}
-	register_hotcpu_notifier(&lpm_cpu_nblk);
+
 	module_kobj = kset_find_obj(module_kset, KBUILD_MODNAME);
 	if (!module_kobj) {
 		pr_err("%s: cannot find kobject for module %s\n",
@@ -1180,6 +1411,8 @@ static int lpm_probe(struct platform_device *pdev)
 				__func__);
 		goto failed;
 	}
+
+	msm_pm_htc_init();
 
 	return 0;
 failed:
@@ -1221,21 +1454,9 @@ enum msm_pm_l2_scm_flag lpm_cpu_pre_pc_cb(unsigned int cpu)
 	struct lpm_cluster *cluster = per_cpu(cpu_cluster, cpu);
 	enum msm_pm_l2_scm_flag retflag = MSM_SCM_L2_ON;
 
-	/*
-	 * No need to acquire the lock if probe isn't completed yet
-	 * In the event of the hotplug happening before lpm probe, we want to
-	 * flush the cache to make sure that L2 is flushed. In particular, this
-	 * could cause incoherencies for a cluster architecture. This wouldn't
-	 * affect the idle case as the idle driver wouldn't be registered
-	 * before the probe function
-	 */
 	if (!cluster)
 		return MSM_SCM_L2_OFF;
 
-	/*
-	 * Assumes L2 only. What/How parameters gets passed into TZ will
-	 * determine how this function reports this info back in msm-pm.c
-	 */
 	spin_lock(&cluster->sync_lock);
 
 	if (!cluster->lpm_dev) {
@@ -1249,14 +1470,6 @@ enum msm_pm_l2_scm_flag lpm_cpu_pre_pc_cb(unsigned int cpu)
 
 	if (cluster->lpm_dev)
 		retflag = cluster->lpm_dev->tz_flag;
-	/*
-	 * The scm_handoff_lock will be release by the secure monitor.
-	 * It is used to serialize power-collapses from this point on,
-	 * so that both Linux and the secure context have a consistent
-	 * view regarding the number of running cpus (cpu_count).
-	 *
-	 * It must be acquired before releasing the cluster lock.
-	 */
 unlock_and_return:
 	update_debug_pc_event(PRE_PC_CB, retflag, 0xdeadbeef, 0xdeadbeef,
 			0xdeadbeef);
@@ -1267,13 +1480,6 @@ unlock_and_return:
 	return retflag;
 }
 
-/**
- * lpm_cpu_hotplug_enter(): Called by dying CPU to terminate in low power mode
- *
- * @cpu: cpuid of the dying CPU
- *
- * Called from platform_cpu_kill() to terminate hotplug in a low power mode
- */
 void lpm_cpu_hotplug_enter(unsigned int cpu)
 {
 	enum msm_pm_sleep_mode mode = MSM_PM_SLEEP_MODE_NR;
@@ -1281,10 +1487,6 @@ void lpm_cpu_hotplug_enter(unsigned int cpu)
 	int i;
 	int idx = -1;
 
-	/*
-	 * If lpm isn't probed yet, try to put cpu into the one of the modes
-	 * available
-	 */
 	if (!cluster) {
 		if (msm_spm_is_mode_avail(MSM_SPM_MODE_POWER_COLLAPSE)) {
 			mode = MSM_PM_SLEEP_MODE_POWER_COLLAPSE;

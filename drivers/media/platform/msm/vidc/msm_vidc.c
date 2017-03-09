@@ -79,7 +79,6 @@ int msm_vidc_poll(void *instance, struct file *filp,
 }
 EXPORT_SYMBOL(msm_vidc_poll);
 
-/* Kernel client alternative for msm_vidc_poll */
 int msm_vidc_wait(void *instance)
 {
 	struct msm_vidc_inst *inst = instance;
@@ -425,14 +424,12 @@ static inline enum hal_buffer get_hal_buffer_type(
 	if (inst->session_type == MSM_VIDC_DECODER) {
 		if (b->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
 			return HAL_BUFFER_INPUT;
-		else /* V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE */
+		else 
 			return HAL_BUFFER_OUTPUT;
 	} else {
-		/* FIXME in the future.  See comment in msm_comm_get_\
-		 * domain_partition. Same problem here. */
 		if (b->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
 			return HAL_BUFFER_OUTPUT;
-		else /* V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE */
+		else 
 			return HAL_BUFFER_INPUT;
 	}
 	return -EINVAL;
@@ -506,14 +503,6 @@ int map_and_register_buf(struct msm_vidc_inst *inst, struct v4l2_buffer *b)
 
 		if (temp && is_dynamic_output_buffer_mode(b, inst) &&
 			(i == 0)) {
-			/*
-			* Buffer is already present in registered list
-			* increment ref_count, populate new values of v4l2
-			* buffer in existing buffer_info struct.
-			*
-			* We will use the saved buffer info and queue it when
-			* we receive RELEASE_BUFFER_REFERENCE EVENT from f/w.
-			*/
 			dprintk(VIDC_DBG, "[MAP] Buffer already prepared\n");
 			list_for_each_entry(iterator,
 				&inst->registeredbufs.list, list) {
@@ -563,7 +552,7 @@ int map_and_register_buf(struct msm_vidc_inst *inst, struct v4l2_buffer *b)
 					b->m.planes[i].m.userptr;
 			}
 		}
-		/* We maintain one ref count for all planes*/
+		
 		if ((i == 0) && is_dynamic_output_buffer_mode(b, inst)) {
 			rc = buf_ref_get(inst, binfo);
 			if (rc < 0)
@@ -601,10 +590,6 @@ int unmap_and_deregister_buf(struct msm_vidc_inst *inst,
 	WARN(!mutex_is_locked(&inst->registeredbufs.lock),
 		"Registered buf lock is not acquired for %s", __func__);
 
-	/*
-	* Make sure the buffer to be unmapped and deleted
-	* from the registered list is present in the list.
-	*/
 	list_for_each_entry(temp, &inst->registeredbufs.list, list) {
 		if (temp == binfo) {
 			found = true;
@@ -612,12 +597,6 @@ int unmap_and_deregister_buf(struct msm_vidc_inst *inst,
 		}
 	}
 
-	/*
-	* Free the buffer info only if
-	* - buffer info has not been deleted from registered list
-	* - vidc client has called dqbuf on the buffer
-	* - no references are held on the buffer
-	*/
 	if (!found || !temp || !temp->pending_deletion || !temp->dequeued)
 		goto exit;
 
@@ -627,15 +606,6 @@ int unmap_and_deregister_buf(struct msm_vidc_inst *inst,
 			__func__, temp, i, temp->handle[i],
 			&temp->device_addr[i], temp->fd[i],
 			temp->buff_off[i], temp->mapped[i]);
-		/*
-		* Unmap the handle only if the buffer has been mapped and no
-		* other buffer has a reference to this buffer.
-		* In case of buffers with same fd, we will map the buffer only
-		* once and subsequent buffers will refer to the mapped buffer's
-		* device address.
-		* For buffers which share the same fd, do not unmap and keep
-		* the buffer info in registered list.
-		*/
 		if (temp->handle[i] && temp->mapped[i] &&
 			!temp->same_fd_ref[i]) {
 			msm_comm_smem_free(inst,
@@ -750,7 +720,7 @@ int msm_vidc_prepare_buf(void *instance, struct v4l2_buffer *b)
 	if (is_dynamic_output_buffer_mode(b, inst))
 		return 0;
 
-	/* Map the buffer only for non-kernel clients*/
+	
 	if (b->m.planes[0].reserved[0]) {
 		inst->map_output_buffer = true;
 		if (map_and_register_buf(inst, b))
@@ -785,11 +755,6 @@ int msm_vidc_release_buffers(void *instance, int buffer_type)
 		}
 	}
 
-	/*
-	* In dynamic buffer mode, driver needs to release resources,
-	* but not call release buffers on firmware, as the buffers
-	* were never registered with firmware.
-	*/
 	if ((buffer_type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) &&
 		(inst->buffer_mode_set[CAPTURE_PORT] ==
 				HAL_BUFFER_MODE_DYNAMIC)) {

@@ -23,11 +23,16 @@
 #include <linux/regulator/rpm-smd-regulator.h>
 #include <linux/msm_thermal.h>
 #include <linux/delay.h>
+#include <linux/power_supply.h>
 #include <linux/cpu.h>
 #include <soc/qcom/scm.h>
+#include "lpm-levels.h"
 
 #define L2_HS_STS_SET	0x200
+#define BATT_LOW_THRESHOLD 15
 
+static struct power_supply lpm_wa_psy;
+static const char name[] = "lpm";
 static struct work_struct lpm_wa_work;
 static struct workqueue_struct *lpm_wa_wq;
 static bool skip_l2_spm;
@@ -43,7 +48,20 @@ cpumask_t l1_l2_offline_mask;
 cpumask_t offline_mask;
 struct resource *l1_l2_gcc_res;
 uint32_t l2_status = -1;
+static int prev_battery_percentage = 100;
 
+static int lpm_battery_get_property(struct power_supply *psy,
+				enum power_supply_property prop,
+				union power_supply_propval *val)
+{
+	return 0;
+}
+static int lpm_battery_set_property(struct power_supply *psy,
+				enum power_supply_property prop,
+				const union power_supply_propval *val)
+{
+	return 0;
+}
 static int lpm_wa_callback(struct notifier_block *cpu_nb,
 	unsigned long action, void *hcpu)
 {
@@ -76,20 +94,75 @@ static struct notifier_block __refdata lpm_wa_nblk = {
 	.notifier_call = lpm_wa_callback,
 };
 
+static void lpm_dynamic_clock_gating_workaround(void)
+{
+	int ret = 0;
+
+	cpumask_copy(&curr_req.offline_mask, &l1_l2_offline_mask);
+	pr_info("%s: Start to request hotplug: 0x%x\n", __func__, (uint32_t)*cpumask_bits(&curr_req.offline_mask));
+	ret = devmgr_client_request_mitigation(
+			hotplug_handle,
+			HOTPLUG_MITIGATION_REQ,
+			&curr_req);
+	if (ret) {
+		pr_err("hotplug request failed. err:%d\n", ret);
+		return;
+	}
+
+	if (cpumask_equal(&offline_mask, &l1_l2_offline_mask))
+		queue_work(lpm_wa_wq, &lpm_wa_work);
+}
+
+static void lpm_supply_callback(struct power_supply *psy)
+{
+
+	static struct power_supply *lpm_psy;
+	int battery_percentage = 0;
+	union power_supply_propval ret = {0,};
+	static bool l2_enable = true;
+
+	if (!lpm_psy)
+		lpm_psy = power_supply_get_by_name("battery");
+	if (lpm_psy) {
+		battery_percentage = lpm_psy->get_property(lpm_psy,
+				POWER_SUPPLY_PROP_CAPACITY, &ret);
+		battery_percentage = ret.intval;
+
+		if (prev_battery_percentage == battery_percentage)
+			return;
+
+		if (battery_percentage < BATT_LOW_THRESHOLD) {
+			if (l2_enable == false) {
+				prev_battery_percentage = battery_percentage;
+				return;
+			}
+			lpm_cluster_mode_disable();
+			l2_enable = false;
+		} else {
+			if (enable_dynamic_clock_gating == true &&
+					store_clock_gating == true)
+				lpm_dynamic_clock_gating_workaround();
+
+			if (l2_enable == true) {
+				prev_battery_percentage = battery_percentage;
+				return;
+			}
+
+			lpm_cluster_mode_enable();
+			l2_enable = true;
+
+		}
+	prev_battery_percentage = battery_percentage;
+	}
+}
+
 static void process_lpm_workarounds(struct work_struct *w)
 {
 	int ret = 0, status = 0, cpu = 0;
 
-	/* MSM8952 have L1/L2 dynamic clock gating disabled in HW for
-	 * performance cluster cores. Enable it via SW to reduce power
-	 * impact.
-	 */
 
 	if (enable_dynamic_clock_gating) {
 
-		/* Skip enabling L1/L2 clock gating if perf l2 is not in low
-		 * power mode.
-		 */
 		status = (__raw_readl(l2_pwr_sts) & L2_HS_STS_SET)
 							== L2_HS_STS_SET;
 		if (status) {
@@ -118,6 +191,7 @@ static void process_lpm_workarounds(struct work_struct *w)
 		put_cpu();
 
 		HOTPLUG_NO_MITIGATION(&curr_req.offline_mask);
+		pr_info("%s: Start to request hotplug: 0x%x\n", __func__, (uint32_t)*cpumask_bits(&curr_req.offline_mask));
 		ret = devmgr_client_request_mitigation(
 				hotplug_handle,
 				HOTPLUG_MITIGATION_REQ,
@@ -150,19 +224,11 @@ static ssize_t store_clock_gating_enabled(struct kobject *kobj,
 		return count;
 	}
 
-	cpumask_copy(&curr_req.offline_mask, &l1_l2_offline_mask);
-	ret = devmgr_client_request_mitigation(
-			hotplug_handle,
-			HOTPLUG_MITIGATION_REQ,
-			&curr_req);
-	if (ret) {
-		pr_err("hotplug request failed. err:%d\n", ret);
-		return count;
-	}
-
 	store_clock_gating = true;
-	if (cpumask_equal(&offline_mask, &l1_l2_offline_mask))
-		queue_work(lpm_wa_wq, &lpm_wa_work);
+	if (prev_battery_percentage < BATT_LOW_THRESHOLD)
+		return count;
+
+	lpm_dynamic_clock_gating_workaround();
 
 	return count;
 }
@@ -178,20 +244,32 @@ static int lpm_wa_probe(struct platform_device *pdev)
 	struct resource *res = NULL;
 	unsigned long cpu_mask = 0;
 	char *key;
+	struct power_supply *lpm_psy;
+	union power_supply_propval val = {0,};
 
 
 	skip_l2_spm = of_property_read_bool(pdev->dev.of_node,
 					"qcom,lpm-wa-skip-l2-spm");
 
-	/*
-	 * Enabling L1/L2 tag ram clock gating requires core and L2 to be
-	 * in quiescent state. lpm-wa-dynamic-clock-gating flag specifies
-	 * WA implementation in SW for perf core0 and L2.
-	 */
 	enable_dynamic_clock_gating = of_property_read_bool(pdev->dev.of_node,
 					"qcom,lpm-wa-dynamic-clock-gating");
 	if (!enable_dynamic_clock_gating)
 		return ret;
+
+	lpm_wa_psy.name = name;
+	lpm_wa_psy.type = POWER_SUPPLY_TYPE_BMS;
+	lpm_wa_psy.get_property     = lpm_battery_get_property;
+	lpm_wa_psy.set_property     = lpm_battery_set_property;
+	lpm_wa_psy.num_properties = 0;
+	lpm_wa_psy.external_power_changed = lpm_supply_callback;
+	ret = power_supply_register(&pdev->dev, &lpm_wa_psy);
+	lpm_psy = power_supply_get_by_name("battery");
+	if (lpm_psy) {
+		prev_battery_percentage = lpm_psy->get_property(lpm_psy,
+			POWER_SUPPLY_PROP_CAPACITY, &val);
+		prev_battery_percentage = val.intval;
+	}
+
 	is_l1_l2_gcc_secure = of_property_read_bool(pdev->dev.of_node,
 					"qcom,l1-l2-gcc-secure");
 
@@ -258,9 +336,8 @@ static int lpm_wa_probe(struct platform_device *pdev)
 		pr_err("%s: cannot create kobject for module %s\n",
 			__func__, KBUILD_MODNAME);
 		ret = -ENOENT;
-	}
-
-	ret = sysfs_create_file(module_lpm_wa,
+	} else
+		ret = sysfs_create_file(module_lpm_wa,
 					&clock_gating_enabled_attr.attr);
 	if (ret) {
 		pr_err("cannot create attr group. err:%d\n", ret);

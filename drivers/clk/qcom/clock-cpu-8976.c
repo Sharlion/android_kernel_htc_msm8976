@@ -80,17 +80,17 @@ enum vdd_mx_pll_levels {
 };
 
 static int vdd_hf_levels[] = {
-	0,		RPM_REGULATOR_LEVEL_NONE,	/* VDD_PLL_OFF */
-	1800000,	RPM_REGULATOR_LEVEL_SVS,	/* VDD_PLL_SVS */
-	1800000,	RPM_REGULATOR_LEVEL_NOM,	/* VDD_PLL_NOM */
-	1800000,	RPM_REGULATOR_LEVEL_TURBO,	/* VDD_PLL_TUR */
+	0,		RPM_REGULATOR_LEVEL_NONE,	
+	1800000,	RPM_REGULATOR_LEVEL_SVS,	
+	1800000,	RPM_REGULATOR_LEVEL_NOM,	
+	1800000,	RPM_REGULATOR_LEVEL_TURBO,	
 };
 
 static int vdd_sr_levels[] = {
-	RPM_REGULATOR_LEVEL_NONE,		/* VDD_PLL_OFF */
-	RPM_REGULATOR_LEVEL_SVS,		/* VDD_PLL_SVS */
-	RPM_REGULATOR_LEVEL_NOM,		/* VDD_PLL_NOM */
-	RPM_REGULATOR_LEVEL_TURBO,		/* VDD_PLL_TUR */
+	RPM_REGULATOR_LEVEL_NONE,		
+	RPM_REGULATOR_LEVEL_SVS,		
+	RPM_REGULATOR_LEVEL_NOM,		
+	RPM_REGULATOR_LEVEL_TURBO,		
 };
 
 static DEFINE_VDD_REGULATORS(vdd_hf, VDD_MX_NUM, 2,
@@ -115,7 +115,6 @@ static DEFINE_VDD_REGULATORS(vdd_mx_sr, VDD_MX_NUM, 1,
 	},					\
 	.num_fmax = VDD_MX_NUM
 
-/* Early output of PLL */
 static struct pll_clk a72ss_hf_pll = {
 	.mode_reg = (void __iomem *)APCS_PLL_MODE,
 	.l_reg = (void __iomem *)APCS_PLL_L_VAL,
@@ -147,7 +146,7 @@ static struct pll_clk a72ss_hf_pll = {
 		.parent = &xo_a_clk.c,
 		.dbg_name = "a72ss_hf_pll",
 		.ops = &clk_ops_hf_pll,
-		/* MX level of MSM is much higher than of PLL */
+		
 		VDD_MX_HF_FMAX_MAP2(SVS, 2000000000, NOM, 2900000000UL),
 		CLK_INIT(a72ss_hf_pll.c),
 	},
@@ -155,7 +154,6 @@ static struct pll_clk a72ss_hf_pll = {
 
 DEFINE_FIXED_DIV_CLK(a72ss_hf_pll_main, 2, &a72ss_hf_pll.c);
 
-/* Early output of PLL */
 static struct pll_clk a53ss_sr_pll = {
 	.mode_reg = (void __iomem *)APCS_PLL_MODE,
 	.l_reg = (void __iomem *)APCS_PLL_L_VAL,
@@ -200,7 +198,6 @@ static struct pll_clk a53ss_sr_pll = {
 DEFINE_FIXED_DIV_CLK(a53ss_sr_pll_main, 2, &a53ss_sr_pll.c);
 
 
-/* Early output of PLL */
 static struct pll_clk cci_sr_pll = {
 	.mode_reg = (void __iomem *)APCS_PLL_MODE,
 	.l_reg = (void __iomem *)APCS_PLL_L_VAL,
@@ -319,7 +316,7 @@ static struct mux_div_clk ccissmux = {
 		{ &cci_sr_pll_main.c,	 3 },
 		{ &sys_apcsaux_clk_3.c,  4 },
 		{ &cci_sr_pll.c,	 5 },
-		/* SRC - 2 is Tied off */
+		
 	),
 };
 
@@ -356,12 +353,6 @@ static int cpu_clk_8976_set_rate(struct clk *c, unsigned long rate)
 	struct cpu_clk_8976 *cpuclk = to_cpu_clk_8976(c);
 	bool hw_low_power_ctrl = cpuclk->hw_low_power_ctrl;
 
-	/*
-	 * If hardware control of the clock tree is enabled during power
-	 * collapse, setup a PM QOS request to prevent power collapse and
-	 * wake up one of the CPUs in this clock domain, to ensure software
-	 * control while the clock rate is being switched.
-	 */
 	if (hw_low_power_ctrl) {
 		memset(&cpuclk->req, 0, sizeof(cpuclk->req));
 		cpumask_copy(&cpuclk->req.cpus_affine,
@@ -375,7 +366,7 @@ static int cpu_clk_8976_set_rate(struct clk *c, unsigned long rate)
 
 	ret = clk_set_rate(c->parent, rate);
 
-	/* Remove PM QOS request */
+	
 	if (hw_low_power_ctrl)
 		pm_qos_remove_request(&cpuclk->req);
 
@@ -498,7 +489,7 @@ static struct mux_clk cpu_debug_pri_mux = {
 };
 
 static struct clk_lookup cpu_clocks_8976[] = {
-	/* PLL */
+	
 	CLK_LIST(a53ss_sr_pll),
 	CLK_LIST(a53ss_sr_pll_main),
 	CLK_LIST(a72ss_hf_pll),
@@ -506,21 +497,21 @@ static struct clk_lookup cpu_clocks_8976[] = {
 	CLK_LIST(cci_sr_pll),
 	CLK_LIST(cci_sr_pll_main),
 
-	/* PLL Sources */
+	
 	CLK_LIST(sys_apcsaux_clk_2),
 	CLK_LIST(sys_apcsaux_clk_3),
 
-	/* Muxes */
+	
 	CLK_LIST(a53ssmux),
 	CLK_LIST(a72ssmux),
 	CLK_LIST(ccissmux),
 
-	/* CPU clocks */
+	
 	CLK_LIST(a72_clk),
 	CLK_LIST(a53_clk),
 	CLK_LIST(cci_clk),
 
-	/* debug clocks */
+	
 	CLK_LIST(apc0_m_clk),
 	CLK_LIST(apc1_m_clk),
 	CLK_LIST(cci_m_clk),
@@ -544,6 +535,29 @@ static struct clk *logical_cpu_to_clk(int cpu)
 
 	return NULL;
 }
+
+#if (defined(CONFIG_HTC_DEBUG_FOOTPRINT) && defined(CONFIG_HTC_DEBUG_MSM8976))
+int clk_get_cpu_idx(struct clk *c)
+{
+	
+	if (c == &a53ssmux.c || c == &a53_clk.c)
+		return 0;
+
+	
+	if (c == &a72ssmux.c || c == &a72_clk.c)
+		return 4;
+
+	return -1;
+}
+
+int clk_get_l2_idx(struct clk *c)
+{
+	if (c == &ccissmux.c || c == &cci_clk.c)
+		return 0;
+
+	return -1;
+}
+#endif
 
 static long corner_to_voltage(unsigned long corner, struct device *dev)
 {
@@ -575,7 +589,7 @@ static int add_opp(struct clk *c, struct device *cpudev, struct device *vregdev,
 
 	rcu_read_lock();
 
-	/* Check if the regulator driver has already populated OPP tables */
+	
 	oppl = dev_pm_opp_find_freq_exact(vregdev, 2, true);
 
 	rcu_read_unlock();
@@ -590,10 +604,6 @@ static int add_opp(struct clk *c, struct device *cpudev, struct device *vregdev,
 			return -EINVAL;
 		}
 		uv = corner = c->vdd_class->vdd_uv[level];
-		/*
-		 * If corner to voltage mapping is available, populate the OPP
-		 * table with the voltages rather than corners.
-		 */
 		if (use_voltages) {
 			uv = corner_to_voltage(corner, vregdev);
 			if (uv < 0) {
@@ -608,11 +618,6 @@ static int add_opp(struct clk *c, struct device *cpudev, struct device *vregdev,
 				return ret;
 			}
 		} else {
-			/*
-			 * Populate both CPU and regulator devices with the
-			 * freq-to-corner OPP table to maintain backward
-			 * compatibility.
-			 */
 			ret = dev_pm_opp_add(cpudev, rate, corner);
 			if (ret) {
 				pr_warn("clock-cpu: couldn't add OPP for %lu\n",
@@ -647,10 +652,6 @@ static void print_opp_table(int a53_cpu, int a72_cpu)
 					     true);
 	oppfmin = dev_pm_opp_find_freq_exact(get_cpu_device(a53_cpu), apc0_fmin,
 					     true);
-	/*
-	 * One time information during boot. Important to know that this looks
-	 * sane since it can eventually make its way to the scheduler.
-	 */
 	pr_info("clock_cpu: a53: OPP voltage for %lu: %ld\n", apc0_fmin,
 		dev_pm_opp_get_voltage(oppfmin));
 	pr_info("clock_cpu: a53: OPP voltage for %lu: %ld\n", apc0_fmax,
@@ -715,7 +716,7 @@ static void populate_opp_table(struct platform_device *pdev)
 		}
 	}
 
-	/* One time print during bootup */
+	
 	pr_info("clock-cpu-8976: OPP tables populated (cpu %d and %d)\n",
 							a53_cpu, a72_cpu);
 
@@ -838,7 +839,7 @@ static int cpu_parse_devicetree(struct platform_device *pdev)
 		}
 	}
 
-	/* HF PLL Analog Supply */
+	
 	vdd_hf.regulator[0] = devm_regulator_get(&pdev->dev,
 							"vdd_hf_pll");
 	if (IS_ERR(vdd_hf.regulator[0])) {
@@ -848,7 +849,7 @@ static int cpu_parse_devicetree(struct platform_device *pdev)
 		return PTR_ERR(vdd_hf.regulator[0]);
 	}
 
-	/* HF PLL core logic */
+	
 	vdd_hf.regulator[1] = devm_regulator_get(&pdev->dev,
 							"vdd_mx_hf");
 	if (IS_ERR(vdd_hf.regulator[1])) {
@@ -859,7 +860,7 @@ static int cpu_parse_devicetree(struct platform_device *pdev)
 	}
 	vdd_hf.use_max_uV = true;
 
-	/* SR PLLs core logic */
+	
 	vdd_mx_sr.regulator[0] = devm_regulator_get(&pdev->dev,
 							"vdd_mx_sr");
 	if (IS_ERR(vdd_mx_sr.regulator[0])) {
@@ -919,7 +920,7 @@ static int cpu_parse_devicetree(struct platform_device *pdev)
 		}
 	}
 
-	/* Sources of the PLL */
+	
 	c = devm_clk_get(&pdev->dev, "xo_a");
 	if (IS_ERR(c)) {
 		if (PTR_ERR(c) != -EPROBE_DEFER)
@@ -975,7 +976,7 @@ static int clock_cpu_probe(struct platform_device *pdev)
 		rc = of_get_fmax_vdd_class(pdev, &cpuclk[mux_id]->c,
 								prop_name);
 		if (rc) {
-			/* Fall back to most conservative PVS table */
+			
 			dev_err(&pdev->dev, "Unable to load voltage plan %s!\n",
 								prop_name);
 			snprintf(prop_name, ARRAY_SIZE(prop_name),
@@ -991,7 +992,7 @@ static int clock_cpu_probe(struct platform_device *pdev)
 		}
 	}
 
-	/* Debug Mux */
+	
 	virt_bases[APCS0_DBG_BASE] = devm_ioremap(&pdev->dev, GLB_DIAG, SZ_8);
 	if (!virt_bases[APCS0_DBG_BASE]) {
 		dev_err(&pdev->dev, "Failed to ioremap GLB_DIAG registers\n");
@@ -1009,13 +1010,6 @@ static int clock_cpu_probe(struct platform_device *pdev)
 	if (rc)
 		dev_err(&pdev->dev, "Failed to init RCGwR\n");
 
-	/*
-	 * We don't want the CPU clocks to be turned off at late init
-	 * if CPUFREQ or HOTPLUG configs are disabled. So, bump up the
-	 * refcount of these clocks. Any cpufreq/hotplug manager can assume
-	 * that the clocks have already been prepared and enabled by the time
-	 * they take over.
-	 */
 
 	get_online_cpus();
 
@@ -1182,17 +1176,17 @@ static int __init cpu_clock_a72_init(void)
 	regval = readl_relaxed(base);
 
 	/* Source GPLL0 and at the rate of GPLL0 */
-	regval = (SRC_SEL << 8) | SRC_DIV; /* 0x401 */
+	regval = (SRC_SEL << 8) | SRC_DIV; 
 	writel_relaxed(regval, base + APCS_ALIAS1_CFG_OFF);
-	/* Make sure src sel and src div is set before update bit */
+	
 	mb();
 
-	/* update bit */
+	
 	regval = readl_relaxed(base);
 	regval |= BIT(0);
 	writel_relaxed(regval, base);
 
-	/* Wait for update to take effect */
+	
 	for (count = 500; count > 0; count--) {
 		if (!(readl_relaxed(base)) & BIT(0))
 			break;
@@ -1201,11 +1195,11 @@ static int __init cpu_clock_a72_init(void)
 	if (!(readl_relaxed(base)) & BIT(0))
 		panic("A72 RCG configuration didn't update!\n");
 
-	/* Enable the branch */
+	
 	regval =  readl_relaxed(base + APCS_ALIAS1_CORE_CBCR_OFF);
 	regval |= BIT(0);
 	writel_relaxed(regval, base + APCS_ALIAS1_CORE_CBCR_OFF);
-	/* Branch enable should be complete */
+	
 	mb();
 	iounmap(base);
 

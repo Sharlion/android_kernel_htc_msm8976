@@ -72,7 +72,7 @@ static ssize_t core_info_read(struct file *file, char __user *buf,
 {
 	struct msm_vidc_core *core = file->private_data;
 	struct hfi_device *hdev;
-	struct hal_fw_info fw_info;
+	struct hal_fw_info fw_info = {{0}};
 	int i = 0, rc = 0;
 
 	if (!core || !core->device) {
@@ -120,7 +120,7 @@ static int trigger_ssr_open(struct inode *inode, struct file *file)
 
 static ssize_t trigger_ssr_write(struct file *filp, const char __user *buf,
 		size_t count, loff_t *ppos) {
-	u32 ssr_trigger_val;
+	int ssr_trigger_val;
 	int rc;
 	struct msm_vidc_core *core = filp->private_data;
 	rc = sscanf(buf, "%d", &ssr_trigger_val);

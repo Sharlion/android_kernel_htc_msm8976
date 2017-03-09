@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2009, 2012-2013, 2015-2016 The Linux Foundation.
+/* Copyright (c) 2008-2009, 2012-2013, 2015 The Linux Foundation.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -242,7 +242,7 @@ int crc_check(uint8_t *buf, uint16_t len)
 	 * of data and 3 bytes for CRC
 	 */
 	if (!buf || len < 4) {
-		pr_err_ratelimited("diag: In %s, invalid packet or length, buf: 0x%pK, len: %d",
+		pr_err_ratelimited("diag: In %s, invalid packet or length, buf: 0x%p, len: %d",
 				   __func__, buf, len);
 		return -EIO;
 	}
@@ -258,7 +258,7 @@ int crc_check(uint8_t *buf, uint16_t len)
 	sent_crc[0] = buf[len-3];
 	sent_crc[1] = buf[len-2];
 	if (crc != *((uint16_t *)sent_crc)) {
-		pr_debug("diag: In %s, crc mismatch. expected: %x, sent %x.\n",
+		DIAG_DBUG("diag: In %s, crc mismatch. expected: %x, sent %x.\n",
 				__func__, crc, *((uint16_t *)sent_crc));
 		return -EIO;
 	}

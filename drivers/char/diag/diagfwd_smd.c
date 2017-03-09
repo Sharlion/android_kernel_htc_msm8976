@@ -208,7 +208,7 @@ static int smd_channel_probe(struct platform_device *pdev, uint8_t type)
 		index = PERIPHERAL_SENSORS;
 		break;
 	default:
-		pr_debug("diag: In %s Received probe for invalid index %d",
+		DIAGFWD_DBUG("diag: In %s Received probe for invalid index %d",
 			__func__, pdev->id);
 		return -EINVAL;
 	}
@@ -251,7 +251,7 @@ static int smd_channel_probe(struct platform_device *pdev, uint8_t type)
 
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
-	pr_debug("diag: In %s, SMD port probed %s, id = %d, r = %d\n",
+	DIAGFWD_DBUG("diag: In %s, SMD port probed %s, id = %d, r = %d\n",
 		 __func__, smd_info->name, pdev->id, r);
 
 	return 0;
@@ -284,13 +284,13 @@ static int smd_dci_cmd_probe(struct platform_device *pdev)
 
 static int smd_runtime_suspend(struct device *dev)
 {
-	dev_dbg(dev, "pm_runtime: suspending...\n");
+	DIAGFWD_DBUG("pm_runtime: suspending...\n");
 	return 0;
 }
 
 static int smd_runtime_resume(struct device *dev)
 {
-	dev_dbg(dev, "pm_runtime: resuming...\n");
+	DIAGFWD_DBUG("pm_runtime: resuming...\n");
 	return 0;
 }
 
@@ -417,7 +417,16 @@ static void diag_smd_queue_read(void *ctxt)
 		queue_work(smd_info->wq, &(smd_info->read_work));
 	}
 }
+int diag_smd_check_state(void *ctxt)
+{
+	struct diag_smd_info *info = NULL;
 
+	if (!ctxt)
+		return 0;
+
+	info = (struct diag_smd_info *)ctxt;
+	return (int)(atomic_read(&info->diag_state));
+}
 void diag_smd_invalidate(void *ctxt, struct diagfwd_info *fwd_ctxt)
 {
 	struct diag_smd_info *smd_info = NULL;

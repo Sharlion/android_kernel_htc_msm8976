@@ -11,11 +11,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-/*
- * MobiCore client library device management.
- *
- * Device and Trustlet Session management Functions.
- */
 #include <linux/list.h>
 #include <linux/slab.h>
 #include <linux/device.h>
@@ -65,17 +60,13 @@ void mcore_device_cleanup(struct mcore_device_t *dev)
 	struct wsm *wsm;
 	struct list_head *pos, *q;
 
-	/*
-	 * Delete all session objects. Usually this should not be needed
-	 * as close_device() requires that all sessions have been closed before.
-	 */
 	list_for_each_safe(pos, q, &dev->session_vector) {
 		tmp = list_entry(pos, struct session, list);
 		list_del(pos);
 		session_cleanup(tmp);
 	}
 
-	/* Free all allocated WSM descriptors */
+	
 	list_for_each_safe(pos, q, &dev->wsm_mmu_vector) {
 		wsm = list_entry(pos, struct wsm, list);
 		list_del(pos);
@@ -90,7 +81,7 @@ void mcore_device_cleanup(struct mcore_device_t *dev)
 bool mcore_device_open(struct mcore_device_t *dev, const char *device_name)
 {
 	dev->instance = mobicore_open();
-	return (dev->instance != NULL);
+	return dev->instance != NULL;
 }
 
 void mcore_device_close(struct mcore_device_t *dev)
@@ -107,7 +98,7 @@ bool mcore_device_create_new_session(struct mcore_device_t *dev,
 				     uint32_t session_id,
 				     struct connection *connection)
 {
-	/* Check if session_id already exists */
+	
 	if (mcore_device_resolve_session_id(dev, session_id)) {
 		MCDRV_DBG_ERROR(mc_kapi,
 				" session %u already exists", session_id);
@@ -147,7 +138,7 @@ struct session *mcore_device_resolve_session_id(struct mcore_device_t *dev,
 	struct session *tmp;
 	struct list_head *pos;
 
-	/* Get session for session_id */
+	
 	list_for_each(pos, &dev->session_vector) {
 		tmp = list_entry(pos, struct session, list);
 		if (tmp->session_id == session_id) {
@@ -166,7 +157,7 @@ struct wsm *mcore_device_allocate_contiguous_wsm(struct mcore_device_t *dev,
 		if (len == 0)
 			break;
 
-		/* Allocate shared memory */
+		
 		void *virt_addr;
 		uint32_t handle;
 		int ret = mobicore_allocate_wsm(dev->instance, len, &handle,
@@ -174,7 +165,7 @@ struct wsm *mcore_device_allocate_contiguous_wsm(struct mcore_device_t *dev,
 		if (ret != 0)
 			break;
 
-		/* Register (vaddr) with device */
+		
 		wsm = wsm_create(virt_addr, len, handle);
 		if (wsm == NULL) {
 			mobicore_free_wsm(dev->instance, handle);
@@ -208,7 +199,7 @@ bool mcore_device_free_contiguous_wsm(struct mcore_device_t *dev,
 				  "freeWsm virt_addr=0x%p, handle=%d",
 				  wsm->virt_addr, wsm->handle);
 
-		/* ignore return code */
+		
 		mobicore_free_wsm(dev->instance, wsm->handle);
 
 		list_del(pos);

@@ -36,19 +36,17 @@ struct mc_kernelapi_ctx {
 
 struct mc_kernelapi_ctx *mod_ctx;
 
-/* Define a MobiCore Kernel API device structure for use with dev_debug() etc */
 struct device_driver mc_kernel_api_name = {
 	.name = "mckernelapi"
 };
 
 struct device mc_kernel_api_subname = {
-	.init_name = "", /* Set to 'mcapi' at mcapi_init() time */
+	.init_name = "", 
 	.driver = &mc_kernel_api_name
 };
 
 struct device *mc_kapi = &mc_kernel_api_subname;
 
-/* get a unique ID */
 unsigned int mcapi_unique_id(void)
 {
 	return (unsigned int)atomic_inc_return(&(mod_ctx->counter));
@@ -59,7 +57,7 @@ static struct connection *mcapi_find_connection(uint32_t seq)
 	struct connection *tmp;
 	struct list_head *pos;
 
-	/* Get session for session_id */
+	
 	list_for_each(pos, &mod_ctx->peers) {
 		tmp = list_entry(pos, struct connection, list);
 		if (tmp->sequence_magic == seq)
@@ -80,10 +78,6 @@ void mcapi_remove_connection(uint32_t seq)
 	struct connection *tmp;
 	struct list_head *pos, *q;
 
-	/*
-	 * Delete all session objects. Usually this should not be needed as
-	 * closeDevice() requires that all sessions have been closed before.
-	 */
 	list_for_each_safe(pos, q, &mod_ctx->peers) {
 		tmp = list_entry(pos, struct connection, list);
 		if (tmp->sequence_magic == seq) {
@@ -112,7 +106,7 @@ static int mcapi_process(struct sk_buff *skb, struct nlmsghdr *nlh)
 			break;
 		}
 
-		/* Pass the buffer to the appropriate connection */
+		
 		connection_process(c, skb);
 
 		ret = 0;
@@ -129,7 +123,7 @@ static void mcapi_callback(struct sk_buff *skb)
 	while (NLMSG_OK(nlh, len)) {
 		err = mcapi_process(skb, nlh);
 
-		/* if err or if this message says it wants a response */
+		
 		if (err || (nlh->nlmsg_flags & NLM_F_ACK))
 			netlink_ack(skb, nlh, err);
 
@@ -139,26 +133,33 @@ static void mcapi_callback(struct sk_buff *skb)
 
 static int __init mcapi_init(void)
 {
-	struct netlink_kernel_cfg netlink_cfg;
+#if defined MC_NETLINK_COMPAT || defined MC_NETLINK_COMPAT_V37
+	struct netlink_kernel_cfg cfg = {
+		.input  = mcapi_callback,
+	};
+#endif
 
 	dev_set_name(mc_kapi, "mcapi");
 
 	dev_info(mc_kapi, "Mobicore API module initialized!\n");
 
-	netlink_cfg.groups = 0;
-	netlink_cfg.flags = 0;
-	netlink_cfg.input = mcapi_callback;
-	netlink_cfg.cb_mutex = NULL;
-	netlink_cfg.bind = NULL;
-
-	mod_ctx = kzalloc(sizeof(struct mc_kernelapi_ctx), GFP_KERNEL);
+	mod_ctx = kzalloc(sizeof(*mod_ctx), GFP_KERNEL);
 	if (mod_ctx == NULL) {
 		MCDRV_DBG_ERROR(mc_kapi, "Allocation failure");
 		return -ENOMEM;
 	}
-	/* start kernel thread */
+#ifdef MC_NETLINK_COMPAT_V37
 	mod_ctx->sk = netlink_kernel_create(&init_net, MC_DAEMON_NETLINK,
-						    &netlink_cfg);
+					    &cfg);
+#elif defined MC_NETLINK_COMPAT
+	mod_ctx->sk = netlink_kernel_create(&init_net, MC_DAEMON_NETLINK,
+					    THIS_MODULE, &cfg);
+#else
+	
+	mod_ctx->sk = netlink_kernel_create(&init_net, MC_DAEMON_NETLINK, 0,
+					    mcapi_callback, NULL, THIS_MODULE);
+#endif
+
 	if (!mod_ctx->sk) {
 		MCDRV_ERROR(mc_kapi, "register of receive handler failed");
 		kfree(mod_ctx);

@@ -38,6 +38,11 @@
 
 #include "bam_dmux_private.h"
 
+#ifdef CONFIG_HTC_DEBUG_RIL_PCN0005_HTC_DUMP_SMSM_LOG
+extern void msm_smsm_dumplog(void);
+extern void smsm_events_print(void);
+#endif
+
 #define BAM_CH_LOCAL_OPEN       0x1
 #define BAM_CH_REMOTE_OPEN      0x2
 #define BAM_CH_IN_RESET         0x4
@@ -1863,6 +1868,11 @@ static int ssrestart_check(void)
 	DMUX_LOG_KERR(
 		"%s: fatal modem interaction: BAM DMUX disabled for SSR\n",
 								__func__);
+
+#ifdef CONFIG_HTC_DEBUG_RIL_PCN0005_HTC_DUMP_SMSM_LOG
+	smsm_events_print();
+#endif
+
 	in_global_reset = 1;
 	ret = subsystem_restart("modem");
 	if (ret == -ENODEV)

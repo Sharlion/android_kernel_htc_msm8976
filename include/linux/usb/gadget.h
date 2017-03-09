@@ -146,6 +146,7 @@ struct usb_ep_ops {
 
 	int (*fifo_status) (struct usb_ep *ep);
 	void (*fifo_flush) (struct usb_ep *ep);
+	void (*nuke) (struct usb_ep *ep);/*++ 2015/06/24, USB Team,  PCN00040 ++*/
 };
 
 /**
@@ -452,6 +453,17 @@ static inline void usb_ep_fifo_flush(struct usb_ep *ep)
 		ep->ops->fifo_flush(ep);
 }
 
+/*++ 2015/06/24, USB Team,  PCN00040 ++*/
+/**
+ *   * usb_ep_nuke - dequeue all endpoint requests
+ *     * @ep: endpoint
+ *     */
+static inline void usb_ep_nuke(struct usb_ep *ep)
+{
+	if (ep->ops->nuke)
+		ep->ops->nuke(ep);
+}
+/*-- 2015/06/24, USB Team,  PCN00040 --*/
 
 /*-------------------------------------------------------------------------*/
 
@@ -1008,6 +1020,7 @@ struct usb_gadget_driver {
 	int			(*setup)(struct usb_gadget *,
 					const struct usb_ctrlrequest *);
 	void			(*disconnect)(struct usb_gadget *);
+	void			(*mute_disconnect)(struct usb_gadget *);/*++ 2015/06/25 USB Team, PCN00044 ++*/
 	void			(*suspend)(struct usb_gadget *);
 	void			(*resume)(struct usb_gadget *);
 

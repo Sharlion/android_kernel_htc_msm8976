@@ -159,10 +159,6 @@
 		mdss_fb0: qcom,mdss_fb_primary {
 			cell-index = <0>;
 			compatible = "qcom,mdss-fb";
-			qcom,mdss-fb-splash-logo-enabled;
-			qcom,cont-splash-memory {
-				linux,contiguous-region = <&cont_splash_mem>;
-			};
 		};
 
 		mdss_fb1: qcom,mdss_fb_wfd {
@@ -266,8 +262,8 @@
 			      "dsi_phy_regulator", "mmss_misc_phys";
 
 			qcom,mdss-mdp = <&mdss_mdp>;
-			vdd-supply = <&pm8950_l17>;
-			vddio-supply = <&pm8950_l6>;
+			/*vdd-supply = <&pm8950_l17>;*/
+			/*vddio-supply = <&pm8950_l6>;*/
 			lab-supply = <&lab_regulator>;
 			ibb-supply = <&ibb_regulator>;
 
@@ -288,6 +284,7 @@
 				01 c0 00 00 0a 00 00 01 97
 				01 c0 00 00 0f 00 00 01 97
 				00 40 00 00 00 00 00 01 bb];
+			qcom,burst-feature-disabled;
 
 		};
 
@@ -303,8 +300,8 @@
 			      "dsi_phy_regulator", "mmss_misc_phys";
 
 			qcom,mdss-mdp = <&mdss_mdp>;
-			vdd-supply = <&pm8950_l17>;
-			vddio-supply = <&pm8950_l6>;
+			/*vdd-supply = <&pm8950_l17>;*/
+			/*vddio-supply = <&pm8950_l6>;*/
 			lab-supply = <&lab_regulator>;
 			ibb-supply = <&ibb_regulator>;
 
@@ -325,6 +322,7 @@
 				01 c0 00 00 0a 00 00 01 97
 				01 c0 00 00 0f 00 00 01 97
 				00 40 00 00 00 00 00 01 bb];
+			qcom,burst-feature-disabled;
 
 		};
 	};

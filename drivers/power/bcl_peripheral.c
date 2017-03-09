@@ -360,7 +360,7 @@ static int bcl_access_monitor_enable(bool enable)
 					: "Current Monitor to Inactive",
 					0);
 				disable_irq_nosync(perph_data->irq_num);
-				/* Fall through to clear the poll work */
+				
 			case BCL_PARAM_INACTIVE:
 			case BCL_PARAM_POLLING:
 				cancel_delayed_work_sync(
@@ -696,7 +696,7 @@ static irqreturn_t bcl_handle_ibat(int irq, void *data)
 			pr_err("Error clearing max/min reg. err:%d\n", ret);
 		thresh_value = perph_data->high_trip;
 		convert_adc_to_ibat_val(&thresh_value);
-		/* Account threshold trip from PBS threshold for dead time */
+		
 		thresh_value -= perph_data->inhibit_derating_ua;
 		if (perph_data->trip_val < thresh_value) {
 			pr_debug("False Ibat high trip. ibat:%d ibat_thresh_val:%d\n",
@@ -781,7 +781,7 @@ static int bcl_get_devicetree_data(struct spmi_device *spmi)
 	const __be32 *prop = NULL;
 	struct device_node *dev_node = spmi->dev.of_node;
 
-	/* Get SPMI peripheral address */
+	
 	resource = spmi_get_resource(spmi, NULL, IORESOURCE_MEM, 0);
 	if (!resource) {
 		pr_err("No base address defined\n");
@@ -805,7 +805,7 @@ static int bcl_get_devicetree_data(struct spmi_device *spmi)
 		pr_debug("pon_spare@%04x\n", bcl_perph->pon_spare_addr);
 	}
 
-	/* Register SPMI peripheral interrupt */
+	
 	irq_num = spmi_get_irq_byname(spmi, NULL,
 			BCL_VBAT_INT_NAME);
 	if (irq_num < 0) {
@@ -823,7 +823,7 @@ static int bcl_get_devicetree_data(struct spmi_device *spmi)
 	}
 	bcl_perph->param[BCL_PARAM_CURRENT].irq_num = irq_num;
 
-	/* Get VADC and IADC scaling factor */
+	
 	key = "qcom,vbat-scaling-factor";
 	READ_CONV_FACTOR(dev_node, key, temp_val, ret,
 		bcl_perph->param[BCL_PARAM_VOLTAGE].scaling_factor);
@@ -1034,7 +1034,7 @@ static int bcl_probe(struct spmi_device *spmi)
 		goto bcl_probe_exit;
 	}
 	bcl_psy.name = bcl_psy_name;
-	bcl_psy.type = POWER_SUPPLY_TYPE_BMS;
+	bcl_psy.type = POWER_SUPPLY_TYPE_BATTERY;
 	bcl_psy.get_property     = bcl_psy_get_property;
 	bcl_psy.set_property     = bcl_psy_set_property;
 	bcl_psy.num_properties   = 0;
@@ -1063,10 +1063,6 @@ static int bcl_probe(struct spmi_device *spmi)
 			&bcl_perph->param[BCL_PARAM_VOLTAGE].state_trans_lock);
 		goto bcl_probe_exit;
 	}
-	/*
-	 * BCL is enabled by default in hardware.
-	 * Disable BCL monitoring till a valid threshold is set by APPS
-	 */
 	disable_irq_nosync(bcl_perph->param[BCL_PARAM_VOLTAGE].irq_num);
 	mutex_unlock(&bcl_perph->param[BCL_PARAM_VOLTAGE].state_trans_lock);
 

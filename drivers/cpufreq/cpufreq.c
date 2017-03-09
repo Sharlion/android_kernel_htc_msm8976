@@ -1832,6 +1832,11 @@ static int __cpufreq_governor(struct cpufreq_policy *policy,
 #else
 	struct cpufreq_governor *gov = NULL;
 #endif
+	if (!policy->governor) {
+		printk(KERN_WARNING "policy->governor is NULL, policy->cpu = %u\n",
+			       policy->cpu);
+		return -EBUSY;
+	}
 
 	if (policy->governor->max_transition_latency &&
 	    policy->cpuinfo.transition_latency >

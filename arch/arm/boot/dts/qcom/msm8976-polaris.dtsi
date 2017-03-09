@@ -164,12 +164,12 @@
 	qcom,pins = <&gp 113>;
 	qcom,num-grp-pins = <1>;
 };
-
-&wsa_spkr_sd {
-	qcom,pins = <&gp 132>, <&gp 134>;
-	qcom,num-grp-pins = <2>;
-};
-
+//HTC_AUD_START
+//&wsa_spkr_sd {
+//	qcom,pins = <&gp 132>, <&gp 134>;
+//	qcom,num-grp-pins = <2>;
+//};
+//HTC_AUD_END
 &sdhc_2 {
 	vdd-supply = <&pm8950_l11>;
 	qcom,vdd-voltage-level = <2950000 2950000>;

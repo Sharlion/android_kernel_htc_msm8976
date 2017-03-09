@@ -16,7 +16,7 @@
 #include <linux/errno.h>
 #include <linux/time.h>
 #include <linux/signal.h>
-#include <linux/sched.h>	/* for MAX_SCHEDULE_TIMEOUT */
+#include <linux/sched.h>	
 #include <linux/syscalls.h>
 #include <linux/unistd.h>
 #include <linux/security.h>
@@ -30,9 +30,6 @@
 
 #include <asm/uaccess.h>
 
-/*
- * Get/set struct timeval with struct timespec on the native side
- */
 static int compat_get_timeval_convert(struct timespec *o,
 				      struct compat_timeval __user *i)
 {
@@ -335,7 +332,7 @@ asmlinkage long compat_sys_times(struct compat_tms __user *tbuf)
 		struct compat_tms tmp;
 
 		do_sys_times(&tms);
-		/* Convert our struct tms to the compat version. */
+		
 		tmp.tms_utime = clock_t_to_compat_clock_t(tms.tms_utime);
 		tmp.tms_stime = clock_t_to_compat_clock_t(tms.tms_stime);
 		tmp.tms_cutime = clock_t_to_compat_clock_t(tms.tms_cutime);
@@ -349,10 +346,6 @@ asmlinkage long compat_sys_times(struct compat_tms __user *tbuf)
 
 #ifdef __ARCH_WANT_SYS_SIGPENDING
 
-/*
- * Assumption: old_sigset_t and compat_old_sigset_t are both
- * types that can be passed to put_user()/get_user().
- */
 
 asmlinkage long compat_sys_sigpending(compat_old_sigset_t __user *set)
 {
@@ -372,10 +365,6 @@ asmlinkage long compat_sys_sigpending(compat_old_sigset_t __user *set)
 
 #ifdef __ARCH_WANT_SYS_SIGPROCMASK
 
-/*
- * sys_sigprocmask SIG_SETMASK sets the first (compat) word of the
- * blocked set of signals to the supplied signal set
- */
 static inline void compat_sig_setmask(sigset_t *blocked, compat_sigset_word set)
 {
 	memcpy(blocked->sig, &set, sizeof(set));
@@ -568,7 +557,7 @@ COMPAT_SYSCALL_DEFINE5(waitid,
 		return ret;
 
 	if (uru) {
-		/* sys_waitid() overwrites everything in ru */
+		
 		if (COMPAT_USE_64BIT_TIME)
 			ret = copy_to_user(uru, &ru, sizeof(ru));
 		else
@@ -672,6 +661,8 @@ long compat_sys_timer_create(clockid_t which_clock,
 		struct sigevent kevent;
 
 		event = compat_alloc_user_space(sizeof(*event));
+		if (unlikely(!event))
+			return -EFAULT;
 		if (get_compat_sigevent(&kevent, timer_event_spec) ||
 		    copy_to_user(event, &kevent, sizeof(*event)))
 			return -EFAULT;
@@ -849,13 +840,6 @@ long compat_sys_clock_nanosleep(clockid_t which_clock, int flags,
 	return err;
 }
 
-/*
- * We currently only need the following fields from the sigevent
- * structure: sigev_value, sigev_signo, sig_notify and (sometimes
- * sigev_notify_thread_id).  The others are handled in user mode.
- * We also assume that copying sigev_value.sival_int is sufficient
- * to keep all the bits of sigev_value.sival_ptr intact.
- */
 int get_compat_sigevent(struct sigevent *event,
 		const struct compat_sigevent __user *u_event)
 {
@@ -878,7 +862,7 @@ long compat_get_bitmap(unsigned long *mask, const compat_ulong_t __user *umask,
 	compat_ulong_t um;
 	unsigned long nr_compat_longs;
 
-	/* align bitmap up to nearest compat_long_t boundary */
+	
 	bitmap_size = ALIGN(bitmap_size, BITS_PER_COMPAT_LONG);
 
 	if (!access_ok(VERIFY_READ, umask, bitmap_size / 8))
@@ -890,11 +874,6 @@ long compat_get_bitmap(unsigned long *mask, const compat_ulong_t __user *umask,
 		m = 0;
 
 		for (j = 0; j < sizeof(m)/sizeof(um); j++) {
-			/*
-			 * We dont want to read past the end of the userspace
-			 * bitmap. We must however ensure the end of the
-			 * kernel bitmap is zeroed.
-			 */
 			if (nr_compat_longs-- > 0) {
 				if (__get_user(um, umask))
 					return -EFAULT;
@@ -919,7 +898,7 @@ long compat_put_bitmap(compat_ulong_t __user *umask, unsigned long *mask,
 	compat_ulong_t um;
 	unsigned long nr_compat_longs;
 
-	/* align bitmap up to nearest compat_long_t boundary */
+	
 	bitmap_size = ALIGN(bitmap_size, BITS_PER_COMPAT_LONG);
 
 	if (!access_ok(VERIFY_WRITE, umask, bitmap_size / 8))
@@ -933,10 +912,6 @@ long compat_put_bitmap(compat_ulong_t __user *umask, unsigned long *mask,
 		for (j = 0; j < sizeof(m)/sizeof(um); j++) {
 			um = m;
 
-			/*
-			 * We dont want to write past the end of the userspace
-			 * bitmap.
-			 */
 			if (nr_compat_longs-- > 0) {
 				if (__put_user(um, umask))
 					return -EFAULT;
@@ -1008,7 +983,6 @@ COMPAT_SYSCALL_DEFINE4(rt_sigtimedwait, compat_sigset_t __user *, uthese,
 
 #ifdef __ARCH_WANT_COMPAT_SYS_TIME
 
-/* compat_time_t is a 32 bit "long" and needs to get converted. */
 
 asmlinkage long compat_sys_time(compat_time_t __user * tloc)
 {
@@ -1044,7 +1018,7 @@ asmlinkage long compat_sys_stime(compat_time_t __user *tptr)
 	return 0;
 }
 
-#endif /* __ARCH_WANT_COMPAT_SYS_TIME */
+#endif 
 
 asmlinkage long compat_sys_adjtimex(struct compat_timex __user *utp)
 {
@@ -1135,15 +1109,11 @@ COMPAT_SYSCALL_DEFINE2(sched_rr_get_interval,
 	return ret;
 }
 
-/*
- * Allocate user-space memory for the duration of a single system call,
- * in order to marshall parameters inside a compat thunk.
- */
 void __user *compat_alloc_user_space(unsigned long len)
 {
 	void __user *ptr;
 
-	/* If len would occupy more than half of the entire compat space... */
+	
 	if (unlikely(len > (((compat_uptr_t)~0) >> 1)))
 		return NULL;
 

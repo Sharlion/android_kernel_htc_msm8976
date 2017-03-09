@@ -211,6 +211,39 @@ config LEDS_LP5521
 	  Driver provides direct control via LED class and interface for
 	  programming the engines.
 
+config LEDS_LP5562_HTC
+	tristate "LED Support for N.S. LP5562 LED driver chip"
+	depends on LEDS_CLASS && I2C
+	select LEDS_LP55XX_COMMON
+	help
+		If you say yes here you get support for the National Semiconductor
+		LP5562 LED driver. It is 3 channel chip with programmable engines.
+		Driver provides direct control via LED class and interface for
+		programming the engines.
+
+config LEDS_LP5521_HTC
+	tristate "LED Support for N.S. LP5521 LED driver chip"
+	depends on LEDS_CLASS && I2C
+	select LEDS_LP55XX_COMMON
+	help
+		If you say yes here you get support for the National Semiconductor
+		LP5521 LED driver. It is 3 channel chip with programmable engines.
+		Driver provides direct control via LED class and interface for
+		programming the engines.
+
+config LED_CHECK_PANEL_CONNECTED
+	tristate "LED check panel connected for MFG test"
+	depends on LEDS_LP5521_HTC
+	select LEDS_LP55XX_COMMON
+	help
+		Say Y here if need to check panel connected for MFG test.
+
+config LEDS_SYNC_TOUCH_SOLUTION
+	bool "Sync touch solution to led driver"
+	default n
+	help
+		Sync touch solution to led driver
+
 config LEDS_LP5523
 	tristate "LED Support for TI/National LP5523/55231 LED driver chip"
 	depends on LEDS_CLASS && I2C
@@ -296,6 +329,16 @@ config LEDS_QPNP
 
 	  To compile this driver as a module, choose M here: the module will
 	  be called leds-qpnp.
+
+config LEDS_QPNP_RGB
+    tristate "Support for QPNP LEDs"
+	depends on SPMI && OF_SPMI
+    help
+      This driver supports the leds functionality of Qualcomm PNP PMIC.  It
+      includes RGB Leds.
+
+      To compile this driver as a module, choose M here: the module will
+      be called leds-qpnp.
 
 config LEDS_QPNP_FLASH
 	tristate "Support for QPNP Flash LEDs"

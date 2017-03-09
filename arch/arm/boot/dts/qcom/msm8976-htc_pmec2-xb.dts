@@ -1,0 +1,27 @@
+/*
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "msm8976-v1.1.dtsi"
+#include "msm8976-htc_pmec2.dtsi"
+//HTC_CAM_START, camera dtsi after XB board
+#include "msm8976-camera-sensor-pmec2-XB.dtsi"
+//HTC_CAM_END
+#include "msm8976-charger-pmec2-xb.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. MSM8976 PMEC2 XB";
+	qcom,msm-id = <411 0x10000>, <412 0x10000>, <411 0x10001>, <412 0x10001>;
+	qcom,board-id= <1 0>;
+};

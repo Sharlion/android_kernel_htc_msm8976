@@ -10,9 +10,6 @@
  * GNU General Public License for more details.
  */
 
-/*
- * IPC ROUTER SMD XPRT module.
- */
 #define DEBUG
 
 #include <linux/module.h>
@@ -32,13 +29,190 @@ static int msm_ipc_router_smd_xprt_debug_mask;
 module_param_named(debug_mask, msm_ipc_router_smd_xprt_debug_mask,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
 
+#ifdef CONFIG_HTC_DEBUG_RIL_PCN0005_HTC_DUMP_SMSM_LOG
+#include <linux/fs.h>
+#include <linux/debugfs.h>
+#define DBG_SMD_XPRT_MAX_MSG   512UL
+#define DBG_SMD_XPRT_MSG_LEN   100UL
+
+#define TIME_BUF_LEN  20
+
+void smd_xprt_dbg_log_event(const char * event, ...);
+
+static int smd_xprt_htc_debug_enable = 0;
+static int smd_xprt_htc_debug_dump = 1;
+static int smd_xprt_htc_debug_dump_lines = DBG_SMD_XPRT_MAX_MSG;
+static int smd_xprt_htc_debug_print = 0;
+module_param_named(smd_xprt_htc_debug_enable, smd_xprt_htc_debug_enable,
+		   int, S_IRUGO | S_IWUSR | S_IWGRP);
+module_param_named(smd_xprt_htc_debug_dump, smd_xprt_htc_debug_dump,
+		   int, S_IRUGO | S_IWUSR | S_IWGRP);
+module_param_named(smd_xprt_htc_debug_dump_lines, smd_xprt_htc_debug_dump_lines,
+		   int, S_IRUGO | S_IWUSR | S_IWGRP);
+module_param_named(smd_xprt_htc_debug_print, smd_xprt_htc_debug_print,
+		   int, S_IRUGO | S_IWUSR | S_IWGRP);
+
+static struct {
+	char     (buf[DBG_SMD_XPRT_MAX_MSG])[DBG_SMD_XPRT_MSG_LEN];   
+	unsigned idx;   
+	rwlock_t lck;   
+} dbg_smd_xprt = {
+	.idx = 0,
+	.lck = __RW_LOCK_UNLOCKED(lck)
+};
+#endif
+
 #if defined(DEBUG)
+#ifdef CONFIG_HTC_DEBUG_RIL_PCN0005_HTC_DUMP_SMSM_LOG
+#define D(x...) do { \
+	if (msm_ipc_router_smd_xprt_debug_mask) \
+		pr_info(x); \
+	if (smd_xprt_htc_debug_enable) \
+		smd_xprt_dbg_log_event(x); \
+} while (0)
+#else
 #define D(x...) do { \
 if (msm_ipc_router_smd_xprt_debug_mask) \
 	pr_info(x); \
 } while (0)
+#endif
+#else
+#ifdef CONFIG_HTC_DEBUG_RIL_PCN0005_HTC_DUMP_SMSM_LOG
+#define D(x...) do { \
+	if (smd_htc_debug_enable) \
+		smd_xprt_dbg_log_event(x); \
+} while (0)
 #else
 #define D(x...) do { } while (0)
+#endif
+#endif
+
+#ifdef CONFIG_HTC_DEBUG_RIL_PCN0005_HTC_DUMP_SMSM_LOG
+
+static void smd_xprt_dbg_inc(unsigned *idx)
+{
+	*idx = (*idx + 1) & (DBG_SMD_XPRT_MAX_MSG-1);
+}
+
+static char *smd_xprt_get_timestamp(char *tbuf)
+{
+	unsigned long long t;
+	unsigned long nanosec_rem;
+
+	t = cpu_clock(smp_processor_id());
+	nanosec_rem = do_div(t, 1000000000)/1000;
+	scnprintf(tbuf, TIME_BUF_LEN, "[%5lu.%06lu] ", (unsigned long)t,
+		nanosec_rem);
+	return tbuf;
+}
+
+void smd_xprt_events_print(void)
+{
+	unsigned long	flags;
+	unsigned	i;
+	unsigned lines = 0;
+
+	pr_info("### Show SMD XPRT Log Start ###\n");
+
+	read_lock_irqsave(&dbg_smd_xprt.lck, flags);
+
+	i = dbg_smd_xprt.idx;
+
+	for (smd_xprt_dbg_inc(&i); i != dbg_smd_xprt.idx; smd_xprt_dbg_inc(&i)) {
+		if (!strnlen(dbg_smd_xprt.buf[i], DBG_SMD_XPRT_MSG_LEN))
+			continue;
+		pr_info("%s", dbg_smd_xprt.buf[i]);
+		lines++;
+		if ( lines > smd_xprt_htc_debug_dump_lines )
+			break;
+	}
+
+	read_unlock_irqrestore(&dbg_smd_xprt.lck, flags);
+
+	pr_info("### Show SMD XPRT Log End ###\n");
+}
+
+void msm_smd_xprt_dumplog(void)
+{
+
+	if ( !smd_xprt_htc_debug_enable ) {
+		pr_info("%s: smd_xprt_htc_debug_enable=[%d]\n", __func__, smd_xprt_htc_debug_enable);
+		return;
+	}
+
+	if ( !smd_xprt_htc_debug_dump ) {
+		pr_info("%s: smd_xprt_htc_debug_dump=[%d]\n", __func__, smd_xprt_htc_debug_dump);
+		return;
+	}
+
+	smd_xprt_events_print();
+	return;
+}
+EXPORT_SYMBOL(msm_smd_xprt_dumplog);
+
+void smd_xprt_dbg_log_event(const char * event, ...)
+{
+	unsigned long flags;
+	char tbuf[TIME_BUF_LEN];
+	char dbg_buff[DBG_SMD_XPRT_MSG_LEN];
+	va_list arg_list;
+	int data_size;
+
+	if ( !smd_xprt_htc_debug_enable ) {
+		return;
+	}
+
+	va_start(arg_list, event);
+	data_size = vsnprintf(dbg_buff,
+			      DBG_SMD_XPRT_MSG_LEN, event, arg_list);
+	va_end(arg_list);
+
+	write_lock_irqsave(&dbg_smd_xprt.lck, flags);
+
+	scnprintf(dbg_smd_xprt.buf[dbg_smd_xprt.idx], DBG_SMD_XPRT_MSG_LEN,
+		"%s %s", smd_xprt_get_timestamp(tbuf), dbg_buff);
+
+	smd_xprt_dbg_inc(&dbg_smd_xprt.idx);
+
+	if ( smd_xprt_htc_debug_print )
+		pr_info("%s", dbg_buff);
+	write_unlock_irqrestore(&dbg_smd_xprt.lck, flags);
+
+	return;
+
+}
+EXPORT_SYMBOL(smd_xprt_dbg_log_event);
+
+static int smd_xprt_events_show(struct seq_file *s, void *unused)
+{
+	unsigned long	flags;
+	unsigned	i;
+
+	read_lock_irqsave(&dbg_smd_xprt.lck, flags);
+
+	i = dbg_smd_xprt.idx;
+	for (smd_xprt_dbg_inc(&i); i != dbg_smd_xprt.idx; smd_xprt_dbg_inc(&i)) {
+		if (!strnlen(dbg_smd_xprt.buf[i], DBG_SMD_XPRT_MSG_LEN))
+			continue;
+		seq_printf(s, "%s", dbg_smd_xprt.buf[i]);
+	}
+
+	read_unlock_irqrestore(&dbg_smd_xprt.lck, flags);
+
+	return 0;
+}
+
+static int smd_xprt_events_open(struct inode *inode, struct file *f)
+{
+	return single_open(f, smd_xprt_events_show, inode->i_private);
+}
+
+const struct file_operations smd_xprt_dbg_fops = {
+	.open = smd_xprt_events_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
 #endif
 
 #define MIN_FRAG_SZ (IPC_ROUTER_HDR_SIZE + sizeof(union rr_control_msg))
@@ -46,29 +220,6 @@ if (msm_ipc_router_smd_xprt_debug_mask) \
 #define NUM_SMD_XPRTS 4
 #define XPRT_NAME_LEN (SMD_MAX_CH_NAME_LEN + 12)
 
-/**
- * msm_ipc_router_smd_xprt - IPC Router's SMD XPRT structure
- * @list: IPC router's SMD XPRTs list.
- * @ch_name: Name of the HSIC endpoint exported by ipc_bridge driver.
- * @xprt_name: Name of the XPRT to be registered with IPC Router.
- * @edge: SMD channel edge.
- * @driver: Platform drivers register by this XPRT.
- * @xprt: IPC Router XPRT structure to contain XPRT specific info.
- * @channel: SMD channel specific info.
- * @smd_xprt_wq: Workqueue to queue read & other XPRT related works.
- * @write_avail_wait_q: wait queue for writer thread.
- * @in_pkt: Pointer to any partially read packet.
- * @is_partial_in_pkt: check pkt completion.
- * @read_work: Read Work to perform read operation from SMD.
- * @ss_reset_lock: Lock to protect access to the ss_reset flag.
- * @ss_reset: flag used to check SSR state.
- * @pil: handle to the remote subsystem.
- * @sft_close_complete: Variable to indicate completion of SSR handling
- *                      by IPC Router.
- * @xprt_version: IPC Router header version supported by this XPRT.
- * @xprt_option: XPRT specific options to be handled by IPC Router.
- * @disable_pil_loading: Disable PIL Loading of the subsystem.
- */
 struct msm_ipc_router_smd_xprt {
 	struct list_head list;
 	char ch_name[SMD_MAX_CH_NAME_LEN];
@@ -82,7 +233,7 @@ struct msm_ipc_router_smd_xprt {
 	struct rr_packet *in_pkt;
 	int is_partial_in_pkt;
 	struct delayed_work read_work;
-	spinlock_t ss_reset_lock;	/*Subsystem reset lock*/
+	spinlock_t ss_reset_lock;	
 	int ss_reset;
 	void *pil;
 	struct completion sft_close_complete;
@@ -100,15 +251,6 @@ static void smd_xprt_read_data(struct work_struct *work);
 static void smd_xprt_open_event(struct work_struct *work);
 static void smd_xprt_close_event(struct work_struct *work);
 
-/**
- * msm_ipc_router_smd_xprt_config - Config. Info. of each SMD XPRT
- * @ch_name: Name of the SMD endpoint exported by SMD driver.
- * @xprt_name: Name of the XPRT to be registered with IPC Router.
- * @edge: ID to differentiate among multiple SMD endpoints.
- * @link_id: Network Cluster ID to which this XPRT belongs to.
- * @xprt_version: IPC Router header version supported by this XPRT.
- * @disable_pil_loading: Disable PIL Loading of the subsystem.
- */
 struct msm_ipc_router_smd_xprt_config {
 	char ch_name[SMD_MAX_CH_NAME_LEN];
 	char xprt_name[XPRT_NAME_LEN];
@@ -418,6 +560,8 @@ static void msm_ipc_router_smd_remote_notify(void *_dev, unsigned event)
 		break;
 
 	case SMD_EVENT_OPEN:
+		D("%s: get smd remote notify SMD_EVENT_OPEN\n", __func__);
+		pr_info("%s: get smd remote notify SMD_EVENT_OPEN\n", __func__);
 		xprt_work = kmalloc(sizeof(struct msm_ipc_router_smd_xprt_work),
 				    GFP_ATOMIC);
 		if (!xprt_work) {
@@ -432,6 +576,8 @@ static void msm_ipc_router_smd_remote_notify(void *_dev, unsigned event)
 		break;
 
 	case SMD_EVENT_CLOSE:
+		D("%s: get smd remote notify SMD_EVENT_CLOSE\n", __func__);
+		pr_info("%s: get smd remote notify SMD_EVENT_CLOSE\n", __func__);
 		spin_lock_irqsave(&smd_xprtp->ss_reset_lock, flags);
 		smd_xprtp->ss_reset = 1;
 		spin_unlock_irqrestore(&smd_xprtp->ss_reset_lock, flags);
@@ -470,15 +616,6 @@ static void *msm_ipc_load_subsystem(uint32_t edge)
 	return pil;
 }
 
-/**
- * find_smd_xprt_list() - Find xprt item specific to an HSIC endpoint
- * @pdev: Platform device registered by HSIC's ipc_bridge driver
- *
- * @return: pointer to msm_ipc_router_smd_xprt if matching endpoint is found,
- *		else NULL.
- *
- * This function is used to find specific xprt item from the global xprt list
- */
 static struct msm_ipc_router_smd_xprt *
 		find_smd_xprt_list(struct platform_device *pdev)
 {
@@ -496,12 +633,6 @@ static struct msm_ipc_router_smd_xprt *
 	return NULL;
 }
 
-/**
- * is_pil_loading_disabled() - Check if pil loading a subsystem is disabled
- * @edge: Edge that points to the remote subsystem.
- *
- * @return: true if disabled, false if enabled.
- */
 static bool is_pil_loading_disabled(uint32_t edge)
 {
 	struct msm_ipc_router_smd_xprt *smd_xprtp;
@@ -517,16 +648,6 @@ static bool is_pil_loading_disabled(uint32_t edge)
 	return true;
 }
 
-/**
- * msm_ipc_router_smd_remote_probe() - Probe an SMD endpoint
- *
- * @pdev: Platform device corresponding to SMD endpoint.
- *
- * @return: 0 on success, standard Linux error codes on error.
- *
- * This function is called when the underlying SMD driver registers
- * a platform device, mapped to SMD endpoint.
- */
 static int msm_ipc_router_smd_remote_probe(struct platform_device *pdev)
 {
 	int rc;
@@ -583,14 +704,6 @@ struct pil_vote_info {
 	struct work_struct unload_work;
 };
 
-/**
- * pil_vote_load_worker() - Process vote to load the modem
- *
- * @work: Work item to process
- *
- * This function is called to process votes to load the modem that have been
- * queued by msm_ipc_load_default_node().
- */
 static void pil_vote_load_worker(struct work_struct *work)
 {
 	const char *peripheral;
@@ -614,14 +727,6 @@ static void pil_vote_load_worker(struct work_struct *work)
 	}
 }
 
-/**
- * pil_vote_unload_worker() - Process vote to unload the modem
- *
- * @work: Work item to process
- *
- * This function is called to process votes to unload the modem that have been
- * queued by msm_ipc_unload_default_node().
- */
 static void pil_vote_unload_worker(struct work_struct *work)
 {
 	struct pil_vote_info *vote_info;
@@ -635,15 +740,6 @@ static void pil_vote_unload_worker(struct work_struct *work)
 	kfree(vote_info);
 }
 
-/**
- * msm_ipc_load_default_node() - Queue a vote to load the modem.
- *
- * @return: PIL vote info structure on success, NULL on failure.
- *
- * This function places a work item that loads the modem on the
- * single-threaded workqueue used for processing PIL votes to load
- * or unload the modem.
- */
 void *msm_ipc_load_default_node(void)
 {
 	struct pil_vote_info *vote_info;
@@ -661,16 +757,6 @@ void *msm_ipc_load_default_node(void)
 }
 EXPORT_SYMBOL(msm_ipc_load_default_node);
 
-/**
- * msm_ipc_unload_default_node() - Queue a vote to unload the modem.
- *
- * @pil_vote: PIL vote info structure, containing the PIL handle
- * and work structure.
- *
- * This function places a work item that unloads the modem on the
- * single-threaded workqueue used for processing PIL votes to load
- * or unload the modem.
- */
 void msm_ipc_unload_default_node(void *pil_vote)
 {
 	struct pil_vote_info *vote_info;
@@ -683,16 +769,6 @@ void msm_ipc_unload_default_node(void *pil_vote)
 }
 EXPORT_SYMBOL(msm_ipc_unload_default_node);
 
-/**
- * msm_ipc_router_smd_driver_register() - register SMD XPRT drivers
- *
- * @smd_xprtp: pointer to Ipc router smd xprt structure.
- *
- * @return: 0 on success, standard Linux error codes on error.
- *
- * This function is called when a new XPRT is added to register platform
- * drivers for new XPRT.
- */
 static int msm_ipc_router_smd_driver_register(
 			struct msm_ipc_router_smd_xprt *smd_xprtp)
 {
@@ -727,16 +803,6 @@ static int msm_ipc_router_smd_driver_register(
 	return 0;
 }
 
-/**
- * msm_ipc_router_smd_config_init() - init SMD xprt configs
- *
- * @smd_xprt_config: pointer to SMD xprt configurations.
- *
- * @return: 0 on success, standard Linux error codes on error.
- *
- * This function is called to initialize the SMD XPRT pointer with
- * the SMD XPRT configurations either from device tree or static arrays.
- */
 static int msm_ipc_router_smd_config_init(
 		struct msm_ipc_router_smd_xprt_config *smd_xprt_config)
 {
@@ -787,14 +853,6 @@ static int msm_ipc_router_smd_config_init(
 	return 0;
 }
 
-/**
- * parse_devicetree() - parse device tree binding
- *
- * @node: pointer to device tree node
- * @smd_xprt_config: pointer to SMD XPRT configurations
- *
- * @return: 0 on success, -ENODEV on failure.
- */
 static int parse_devicetree(struct device_node *node,
 		struct msm_ipc_router_smd_xprt_config *smd_xprt_config)
 {
@@ -849,16 +907,6 @@ error:
 	return -ENODEV;
 }
 
-/**
- * msm_ipc_router_smd_xprt_probe() - Probe an SMD xprt
- *
- * @pdev: Platform device corresponding to SMD xprt.
- *
- * @return: 0 on success, standard Linux error codes on error.
- *
- * This function is called when the underlying device tree driver registers
- * a platform device, mapped to an SMD transport.
- */
 static int msm_ipc_router_smd_xprt_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -888,15 +936,6 @@ static int msm_ipc_router_smd_xprt_probe(struct platform_device *pdev)
 	return 0;
 }
 
-/**
- * ipc_router_smd_xprt_probe_worker() - probe worker for non DT configurations
- *
- * @work: work item to process
- *
- * This function is called by schedule_delay_work after 3sec and check if
- * device tree probe is done or not. If device tree probe fails the default
- * configurations read from static array.
- */
 static void ipc_router_smd_xprt_probe_worker(struct work_struct *work)
 {
 	int i, ret;
@@ -953,6 +992,20 @@ static int __init msm_ipc_router_smd_xprt_init(void)
 					ipc_router_smd_xprt_probe_worker);
 	schedule_delayed_work(&ipc_router_smd_xprt_probe_work,
 			msecs_to_jiffies(IPC_ROUTER_SMD_XPRT_WAIT_TIMEOUT));
+
+#ifdef CONFIG_HTC_DEBUG_RIL_PCN0005_HTC_DUMP_SMSM_LOG
+#ifdef CONFIG_DEBUG_FS
+	do {
+		struct dentry *dent;
+
+		dent = debugfs_create_dir("smd_xprt", 0);
+		if (!IS_ERR(dent)) {
+			debugfs_create_file("dumplog", S_IRUGO, dent, NULL, &smd_xprt_dbg_fops);
+		}
+	} while(0);
+#endif
+#endif
+
 	return 0;
 }
 

@@ -151,8 +151,12 @@ static inline int kmem_cache_debug(struct kmem_cache *s)
  */
 #define MAX_PARTIAL 10
 
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 #define DEBUG_DEFAULT_FLAGS (SLAB_DEBUG_FREE | SLAB_RED_ZONE | \
 				SLAB_POISON | SLAB_STORE_USER)
+#else
+#define DEBUG_DEFAULT_FLAGS (SLAB_DEBUG_FREE | SLAB_STORE_USER)
+#endif
 
 /*
  * Debugging flags that require metadata to be stored in the slab.  These get
@@ -186,6 +190,7 @@ static struct notifier_block slab_notifier;
 /*
  * Tracking user of a slab.
  */
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 #define TRACK_ADDRS_COUNT 16
 struct track {
 	unsigned long addr;	/* Called from address */
@@ -196,6 +201,11 @@ struct track {
 	int pid;		/* Pid context */
 	unsigned long when;	/* When did the operation occur */
 };
+#else
+struct track {
+	unsigned long addr;
+};
+#endif
 
 enum track_item { TRACK_ALLOC, TRACK_FREE };
 
@@ -498,6 +508,7 @@ static void set_track(struct kmem_cache *s, void *object,
 	struct track *p = get_track(s, object, alloc);
 
 	if (addr) {
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 #ifdef CONFIG_STACKTRACE
 		struct stack_trace trace;
 		int i;
@@ -518,10 +529,11 @@ static void set_track(struct kmem_cache *s, void *object,
 		for (i = trace.nr_entries; i < TRACK_ADDRS_COUNT; i++)
 			p->addrs[i] = 0;
 #endif
-		p->addr = addr;
 		p->cpu = smp_processor_id();
 		p->pid = current->pid;
 		p->when = jiffies;
+#endif
+		p->addr = addr;
 	} else
 		memset(p, 0, sizeof(struct track));
 }
@@ -540,6 +552,7 @@ static void print_track(const char *s, struct track *t)
 	if (!t->addr)
 		return;
 
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 	printk(KERN_ERR "INFO: %s in %pS age=%lu cpu=%u pid=%d\n",
 		s, (void *)t->addr, jiffies - t->when, t->cpu, t->pid);
 #ifdef CONFIG_STACKTRACE
@@ -551,6 +564,9 @@ static void print_track(const char *s, struct track *t)
 			else
 				break;
 	}
+#endif
+#else
+	printk(KERN_ERR "INFO: %s in %pS",s, (void *)t->addr);
 #endif
 }
 
@@ -587,6 +603,7 @@ static void slab_bug(struct kmem_cache *s, char *fmt, ...)
 	add_taint(TAINT_BAD_PAGE, LOCKDEP_NOW_UNRELIABLE);
 }
 
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 static void slab_fix(struct kmem_cache *s, char *fmt, ...)
 {
 	va_list args;
@@ -597,6 +614,11 @@ static void slab_fix(struct kmem_cache *s, char *fmt, ...)
 	va_end(args);
 	printk(KERN_ERR "FIX %s: %s\n", s->name, buf);
 }
+#else
+static void slab_fix(struct kmem_cache *s, char *fmt, ...)
+{
+}
+#endif
 
 static void print_trailer(struct kmem_cache *s, struct page *page, u8 *p)
 {
@@ -848,7 +870,9 @@ static int check_object(struct kmem_cache *s, struct page *page,
 		 * of the free objects in this slab. May cause
 		 * another error because the object count is now wrong.
 		 */
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 		set_freepointer(s, p, NULL);
+#endif
 		return 0;
 	}
 	return 1;
@@ -900,13 +924,17 @@ static int on_freelist(struct kmem_cache *s, struct page *page, void *search)
 			if (object) {
 				object_err(s, page, object,
 					"Freechain corrupt");
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 				set_freepointer(s, object, NULL);
+#endif
 				break;
 			} else {
 				slab_err(s, page, "Freepointer corrupt");
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 				page->freelist = NULL;
 				page->inuse = page->objects;
 				slab_fix(s, "Freelist cleared");
+#endif
 				return 0;
 			}
 			break;
@@ -923,13 +951,17 @@ static int on_freelist(struct kmem_cache *s, struct page *page, void *search)
 	if (page->objects != max_objects) {
 		slab_err(s, page, "Wrong number of objects. Found %d but "
 			"should be %d", page->objects, max_objects);
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 		page->objects = max_objects;
+#endif
 		slab_fix(s, "Number of objects adjusted.");
 	}
 	if (page->inuse != page->objects - nr) {
 		slab_err(s, page, "Wrong object count. Counter is %d but "
 			"counted were %d", page->inuse, page->objects - nr);
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 		page->inuse = page->objects - nr;
+#endif
 		slab_fix(s, "Object count adjusted.");
 	}
 	return search == NULL;
@@ -1091,6 +1123,7 @@ static noinline int alloc_debug_processing(struct kmem_cache *s, struct page *pa
 	return 1;
 
 bad:
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 	if (PageSlab(page)) {
 		/*
 		 * If this is a slab page then lets do the best we can
@@ -1102,6 +1135,9 @@ bad:
 		page->freelist = NULL;
 	}
 	return 0;
+#else
+	return 1;
+#endif
 }
 
 static noinline struct kmem_cache_node *free_debug_processing(
@@ -1158,9 +1194,15 @@ out:
 
 fail:
 	slab_unlock(page);
+
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 	spin_unlock_irqrestore(&n->list_lock, *flags);
 	slab_fix(s, "Object at 0x%p not freed", object);
 	return NULL;
+#else
+	slab_fix(s, "Object at 0x%p not freed", object);
+	return n;
+#endif
 }
 
 static int __init setup_slub_debug(char *str)
@@ -3994,6 +4036,7 @@ static long validate_slab_cache(struct kmem_cache *s)
  * and freed.
  */
 
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 struct location {
 	unsigned long count;
 	unsigned long addr;
@@ -4216,6 +4259,7 @@ static int list_locations(struct kmem_cache *s, char *buf,
 		len += sprintf(buf, "No data\n");
 	return len;
 }
+#endif
 #endif
 
 #ifdef SLUB_RESILIENCY_TEST
@@ -4759,6 +4803,7 @@ static ssize_t validate_store(struct kmem_cache *s,
 }
 SLAB_ATTR(validate);
 
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 static ssize_t alloc_calls_show(struct kmem_cache *s, char *buf)
 {
 	if (!(s->flags & SLAB_STORE_USER))
@@ -4774,6 +4819,7 @@ static ssize_t free_calls_show(struct kmem_cache *s, char *buf)
 	return list_locations(s, buf, TRACK_FREE);
 }
 SLAB_ATTR_RO(free_calls);
+#endif
 #endif /* CONFIG_SLUB_DEBUG */
 
 #ifdef CONFIG_FAILSLAB
@@ -4946,8 +4992,10 @@ static struct attribute *slab_attrs[] = {
 	&poison_attr.attr,
 	&store_user_attr.attr,
 	&validate_attr.attr,
+#ifndef CONFIG_SLUB_LIGHT_WEIGHT_DEBUG_ON
 	&alloc_calls_attr.attr,
 	&free_calls_attr.attr,
+#endif
 #endif
 #ifdef CONFIG_ZONE_DMA
 	&cache_dma_attr.attr,

@@ -18,6 +18,54 @@
 
 #include <linux/tracepoint.h>
 
+TRACE_EVENT(rpm_msg_id,
+
+	TP_PROTO(int msm_rpm_msg_id, unsigned int msg_id, unsigned int id ),
+
+	TP_ARGS(msm_rpm_msg_id, msg_id, id),
+
+	TP_STRUCT__entry(
+		__field(int, msm_rpm_msg_id)
+		__field(int, msg_id)
+		__field(int, id)
+	),
+
+	TP_fast_assign(
+		__entry->msm_rpm_msg_id = msm_rpm_msg_id;
+		__entry->msg_id = msg_id;
+		__entry->id = id;
+	),
+
+	TP_printk("msm_rpm_msg_id: %d msg_id:%d generated_id:%08x",
+		__entry->msm_rpm_msg_id,
+		__entry->msg_id,
+		__entry->id)
+);
+
+TRACE_EVENT(rpm_smd_ack_buf,
+
+	TP_PROTO(char *buf_addr, unsigned int msg_id, int errno),
+
+	TP_ARGS(buf_addr, msg_id, errno),
+
+	TP_STRUCT__entry(
+		__field(char *, buf_addr)
+		__field(int, msg_id)
+		__field(int, errno)
+	),
+
+	TP_fast_assign(
+		__entry->buf_addr = buf_addr;
+		__entry->msg_id = msg_id;
+		__entry->errno = errno;
+	),
+
+	TP_printk("buf_addr: %p msg_id:%d errno:%08x",
+		__entry->buf_addr,
+		__entry->msg_id,
+		__entry->errno)
+);
+
 TRACE_EVENT(rpm_smd_ack_recvd,
 
 	TP_PROTO(unsigned int irq, unsigned int msg_id, int errno),

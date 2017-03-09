@@ -81,6 +81,7 @@ obj-$(CONFIG_SND_SOC_MDM9630) += snd-soc-mdm9630.o
 snd-soc-msm8x16-objs := msm8x16.o msm8939-slimbus.o msm-audio-pinctrl.o msm8952.o
 snd-soc-msm8x16-objs += msm8952-slimbus.o msm8952-dai-links.o
 obj-$(CONFIG_SND_SOC_MSM8X16) += snd-soc-msm8x16.o
+obj-$(CONFIG_SND_SOC_MSM8X16) += htc_acoustic_alsa.o
 
 # for MSM 8909 sound card driver
 snd-soc-msm8909-objs := msm8x16.o

@@ -352,4 +352,14 @@ config SND_SOC_MDM9640
 	 interfaces with DSP, also it will enable
 	 the machine drivers and the corresponding
 	 DAI-links.
+
+#HTC_AUD_START
+config USE_CODEC_MBHC
+	bool "MBHC support"
+	default n
+	help
+	  Say Y to enable MBHC support.
+
+#HTC_AUD_END
+
 endmenu

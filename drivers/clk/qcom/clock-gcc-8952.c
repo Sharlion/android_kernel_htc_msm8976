@@ -52,19 +52,17 @@ static void __iomem *virt_bases[N_BASES];
 #define CLKFLAG_WAKEUP_CYCLES		0x0
 #define CLKFLAG_SLEEP_CYCLES		0x0
 
-/* Mux source select values */
 #define xo_source_val			0
 #define xo_a_source_val			0
 #define gpll0_source_val		1
 #define gpll3_source_val		2
-#define gpll0_out_main_source_val	1   /* sdcc1_ice_core */
-#define gpll0_out_aux_source_val	2   /* cci_clk_src and
-					     * usb_fs_system_clk_src */
-#define gpll4_source_val		2   /* sdcc1_apss_clk_src */
-#define gpll6_source_val		2   /* mclk0_2_clk_src */
-#define gpll6_aux_source_val		3   /* gfx3d_clk_src */
-#define gpll6_out_main_source_val	1   /* usb_fs_ic_clk_src */
-#define dsi0_phypll_source_val		1   /* byte0_clk & pclk0_clk */
+#define gpll0_out_main_source_val	1   
+#define gpll0_out_aux_source_val	2   
+#define gpll4_source_val		2   
+#define gpll6_source_val		2   
+#define gpll6_aux_source_val		3   
+#define gpll6_out_main_source_val	1   
+#define dsi0_phypll_source_val		1   
 
 #define F(f, s, div, m, n) \
 	{ \
@@ -151,17 +149,16 @@ enum vdd_dig_levels {
 };
 
 static int vdd_corner[] = {
-	RPM_REGULATOR_LEVEL_NONE,		/* VDD_DIG_NONE */
-	RPM_REGULATOR_LEVEL_SVS,		/* VDD_DIG_SVS */
-	RPM_REGULATOR_LEVEL_SVS_PLUS,		/* VDD_DIG_SVS_PLUS */
-	RPM_REGULATOR_LEVEL_NOM,		/* VDD_DIG_NOM */
-	RPM_REGULATOR_LEVEL_NOM_PLUS,		/* VDD_DIG_NOM_PLUS */
-	RPM_REGULATOR_LEVEL_TURBO,		/* VDD_DIG_TURBO */
+	RPM_REGULATOR_LEVEL_NONE,		
+	RPM_REGULATOR_LEVEL_SVS,		
+	RPM_REGULATOR_LEVEL_SVS_PLUS,		
+	RPM_REGULATOR_LEVEL_NOM,		
+	RPM_REGULATOR_LEVEL_NOM_PLUS,		
+	RPM_REGULATOR_LEVEL_TURBO,		
 };
 
 static DEFINE_VDD_REGULATORS(vdd_dig, VDD_DIG_NUM, 1, vdd_corner, NULL);
 
-/* SMD clocks */
 DEFINE_CLK_RPM_SMD_BRANCH(xo_clk_src, xo_a_clk_src, RPM_MISC_CLK_TYPE,
 				CXO_CLK_SRC_ID, 19200000);
 DEFINE_CLK_RPM_SMD(pnoc_clk, pnoc_a_clk, RPM_BUS_CLK_TYPE, PNOC_CLK_ID, NULL);
@@ -172,7 +169,6 @@ DEFINE_CLK_RPM_SMD(sysmmnoc_clk, sysmmnoc_a_clk, RPM_BUS_CLK_TYPE,
 DEFINE_CLK_RPM_SMD(ipa_clk, ipa_a_clk, RPM_IPA_CLK_TYPE, IPA_CLK_ID, NULL);
 DEFINE_CLK_RPM_SMD_QDSS(qdss_clk, qdss_a_clk, RPM_MISC_CLK_TYPE, QDSS_CLK_ID);
 
-/* SMD_XO_BUFFER */
 DEFINE_CLK_RPM_SMD_XO_BUFFER(bb_clk1, bb_clk1_a, BB_CLK1_ID);
 DEFINE_CLK_RPM_SMD_XO_BUFFER(bb_clk2, bb_clk2_a, BB_CLK2_ID);
 DEFINE_CLK_RPM_SMD_XO_BUFFER(rf_clk2, rf_clk2_a, RF_CLK2_ID);
@@ -181,7 +177,6 @@ DEFINE_CLK_RPM_SMD_XO_BUFFER(div_clk2, div_clk2_a, DIV_CLK2_ID);
 DEFINE_CLK_RPM_SMD_XO_BUFFER_PINCTRL(bb_clk1_pin, bb_clk1_a_pin, BB_CLK1_ID);
 DEFINE_CLK_RPM_SMD_XO_BUFFER_PINCTRL(bb_clk2_pin, bb_clk2_a_pin, BB_CLK2_ID);
 
-/* Voter clocks */
 static DEFINE_CLK_VOTER(pnoc_msmbus_clk, &pnoc_clk.c, LONG_MAX);
 static DEFINE_CLK_VOTER(snoc_msmbus_clk, &snoc_clk.c, LONG_MAX);
 static DEFINE_CLK_VOTER(sysmmnoc_msmbus_clk,  &sysmmnoc_clk.c,  LONG_MAX);
@@ -201,7 +196,6 @@ static DEFINE_CLK_VOTER(pnoc_usb_clk, &pnoc_clk.c, LONG_MAX);
 static DEFINE_CLK_VOTER(snoc_usb_clk, &snoc_clk.c, LONG_MAX);
 static DEFINE_CLK_VOTER(bimc_usb_clk, &bimc_clk.c, LONG_MAX);
 
-/* Branch Voter clocks */
 static DEFINE_CLK_BRANCH_VOTER(xo_gcc, &xo_clk_src.c);
 static DEFINE_CLK_BRANCH_VOTER(xo_otg_clk, &xo_clk_src.c);
 static DEFINE_CLK_BRANCH_VOTER(xo_lpm_clk, &xo_clk_src.c);
@@ -212,7 +206,6 @@ static DEFINE_CLK_BRANCH_VOTER(xo_pil_lpass_clk, &xo_clk_src.c);
 
 DEFINE_CLK_DUMMY(wcnss_m_clk, 0);
 
-/* Thermal monitor */
 struct pll_thermal_monitor {
 	int			tsens_id;
 	int			disable_pll_vote_thres;
@@ -235,10 +228,10 @@ enum vdd_sr2_pll_levels {
 };
 
 static int vdd_sr2_levels[] = {
-	0,	 RPM_REGULATOR_LEVEL_NONE,		/* VDD_SR2_PLL_OFF */
-	1800000, RPM_REGULATOR_LEVEL_SVS,		/* VDD_SR2_PLL_SVS */
-	1800000, RPM_REGULATOR_LEVEL_NOM,		/* VDD_SR2_PLL_NOM */
-	1800000, RPM_REGULATOR_LEVEL_TURBO,		/* VDD_SR2_PLL_TUR */
+	0,	 RPM_REGULATOR_LEVEL_NONE,		
+	1800000, RPM_REGULATOR_LEVEL_SVS,		
+	1800000, RPM_REGULATOR_LEVEL_NOM,		
+	1800000, RPM_REGULATOR_LEVEL_TURBO,		
 };
 
 static DEFINE_VDD_REGULATORS(vdd_sr2_pll, VDD_SR2_PLL_NUM, 2,
@@ -253,10 +246,10 @@ enum vdd_hf_pll_levels {
 };
 
 static int vdd_hf_levels[] = {
-	0,	 RPM_REGULATOR_LEVEL_NONE,		/* VDD_HF_PLL_OFF */
-	1800000, RPM_REGULATOR_LEVEL_SVS,		/* VDD_HF_PLL_SVS */
-	1800000, RPM_REGULATOR_LEVEL_NOM,		/* VDD_HF_PLL_NOM */
-	1800000, RPM_REGULATOR_LEVEL_TURBO,		/* VDD_HF_PLL_TUR */
+	0,	 RPM_REGULATOR_LEVEL_NONE,		
+	1800000, RPM_REGULATOR_LEVEL_SVS,		
+	1800000, RPM_REGULATOR_LEVEL_NOM,		
+	1800000, RPM_REGULATOR_LEVEL_TURBO,		
 };
 static DEFINE_VDD_REGULATORS(vdd_hf_pll, VDD_HF_PLL_NUM, 2,
 				vdd_hf_levels, NULL);
@@ -438,7 +431,6 @@ static struct pll_vote_clk gpll0_clk_src = {
 DEFINE_EXT_CLK(gpll0_out_aux_clk_src, &gpll0_clk_src.c);
 DEFINE_EXT_CLK(gpll0_out_main_clk_src, &gpll0_clk_src.c);
 
-/* Don't vote for xo if using this clock to allow xo shutdown */
 static struct pll_vote_clk gpll0_ao_clk_src = {
 	.en_reg = (void __iomem *)APCS_GPLL_ENA_VOTE,
 	.en_mask = BIT(0),
@@ -491,8 +483,6 @@ static struct alpha_pll_masks pll_masks_p = {
 	.test_ctl_hi_mask = BM(31, 0),
 };
 
-/* Slewing plls won't allow to change vco_sel.
- * Hence will have only one vco table entry */
 static struct alpha_pll_vco_tbl p_vco[] = {
 	VCO(0,  700000000, 1400000000),
 };
@@ -3220,9 +3210,8 @@ static struct mux_clk gcc_debug_mux = {
 	},
 };
 
-/* Clock lookup */
 static struct clk_lookup msm_clocks_lookup[] = {
-	/* RPM clocks */
+	
 	CLK_LIST(xo_clk_src),
 	CLK_LIST(xo_a_clk_src),
 	CLK_LIST(xo_otg_clk),
@@ -3456,11 +3445,11 @@ static struct clk_lookup msm_clocks_lookup[] = {
 	CLK_LIST(gcc_venus0_core1_vcodec0_clk),
 	CLK_LIST(gcc_venus0_vcodec0_clk),
 
-	/* Reset clks */
+	
 	CLK_LIST(gcc_usb2_hs_phy_only_clk),
 	CLK_LIST(gcc_qusb2_phy_clk),
 
-	/* WCNSS Debug */
+	
 	CLK_LIST(wcnss_m_clk),
 };
 
@@ -3536,11 +3525,8 @@ static void thermal_monitor_notify(struct therm_threshold *trig_thres)
 		break;
 	}
 
-	if (trig_thres->cur_state != trig_thres->trip_triggered) {
-		sensor_mgr_set_threshold(trig_thres->sensor_id,
+	sensor_mgr_set_threshold(trig_thres->sensor_id,
 					trig_thres->threshold);
-		trig_thres->cur_state = trig_thres->trip_triggered;
-	}
 }
 
 static int clock_check_tsens(void)
@@ -3550,7 +3536,7 @@ static int clock_check_tsens(void)
 	u32 max_tsens_num = 0;
 	unsigned long temp = 0;
 
-	/* Check for current temperature at boot */
+	
 	if (tsens_is_ready() > 0) {
 		ret = tsens_get_max_sensor_num(&max_tsens_num);
 		if (ret < 0) {
@@ -3595,7 +3581,6 @@ static int clock_check_tsens(void)
 	return ret;
 }
 
-/* Please note that the order of reg-names is important */
 static int get_mmio_addr(struct platform_device *pdev)
 {
 	int i, count;
@@ -3723,22 +3708,19 @@ static int msm_gcc_probe(struct platform_device *pdev)
 	clk_set_rate(&apss_ahb_clk_src.c, 19200000);
 	clk_prepare_enable(&apss_ahb_clk_src.c);
 
-	/*
-	 *  Hold an active set vote for PCNOC AHB source. Sleep set vote is 0.
-	 */
 	clk_set_rate(&pnoc_keepalive_a_clk.c, 19200000);
 	clk_prepare_enable(&pnoc_keepalive_a_clk.c);
 
 	clk_prepare_enable(&xo_a_clk_src.c);
 
-	/* Configure Sleep and Wakeup cycles for GMEM clock */
+	
 	regval = readl_relaxed(GCC_REG_BASE(OXILI_GMEM_CBCR));
 	regval ^= 0xFF0;
 	regval |= CLKFLAG_WAKEUP_CYCLES << 8;
 	regval |= CLKFLAG_SLEEP_CYCLES << 4;
 	writel_relaxed(regval, GCC_REG_BASE(OXILI_GMEM_CBCR));
 
-	/* Disable GMEM HW Dynamic */
+	
 	regval = 0x1;
 	writel_relaxed(regval, GCC_REG_BASE(GCC_SPARE3_REG));
 
@@ -3786,8 +3768,8 @@ static int __init clock_pll_thermal_init(void)
 		ret = sensor_mgr_init_threshold(&gcc_clock_dev->dev,
 			&thermal_monitor.tsens_threshold_config,
 			thermal_monitor.tsens_id,
-			thermal_monitor.disable_pll_vote_thres, /* High */
-			thermal_monitor.enable_pll_vote_thres,  /* Low */
+			thermal_monitor.disable_pll_vote_thres, 
+			thermal_monitor.enable_pll_vote_thres,  
 			thermal_monitor_notify);
 		if (ret < 0)
 			dev_err(&gcc_clock_dev->dev,
@@ -3938,7 +3920,6 @@ static int __init msm_clock_debug_init(void)
 	return platform_driver_register(&msm_clock_debug_driver);
 }
 
-/* MDSS DSI_PHY_PLL */
 static struct clk_lookup msm_clocks_gcc_mdss[] = {
 	CLK_LIST(byte0_clk_src),
 	CLK_LIST(pclk0_clk_src),
@@ -4004,3 +3985,105 @@ static int __init msm_gcc_mdss_init(void)
 arch_initcall(msm_gcc_init);
 fs_initcall_sync(msm_gcc_mdss_init);
 late_initcall(msm_clock_debug_init);
+
+#ifdef CONFIG_HTC_POWER_DEBUG
+static LIST_HEAD(clk_blocked_list);
+static DEFINE_SPINLOCK(clk_blocked_lock);
+
+struct clk_table {
+        struct list_head node;
+        struct clk_lookup *clocks;
+        size_t num_clocks;
+};
+
+int clock_blocked_register(struct clk_lookup *table, size_t size)
+{
+        struct clk_table *clk_table;
+        unsigned long flags;
+
+        clk_table = kmalloc(sizeof(*clk_table), GFP_KERNEL);
+        if (!clk_table)
+                return -ENOMEM;
+
+        clk_table->clocks = table;
+        clk_table->num_clocks = size;
+
+        spin_lock_irqsave(&clk_blocked_lock, flags);
+        list_add_tail(&clk_table->node, &clk_blocked_list);
+        spin_unlock_irqrestore(&clk_blocked_lock, flags);
+
+        return 0;
+}
+
+int is_xo_src(struct clk *clk)
+{
+        if (clk == NULL)
+                return 0;
+        if (clk == &xo_clk_src.c)
+                return 1;
+        else if (clk_get_parent(clk))
+                return is_xo_src(clk_get_parent(clk));
+        else
+                return 0;
+}
+
+void clk_ignore_list_add(const char *clock_name)
+{
+	struct clk_lookup *p, *cl = NULL;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(msm_clocks_lookup); i++) {
+		p = &msm_clocks_lookup[i];
+		if (p->clk && !strcmp(p->clk->dbg_name, clock_name)) {
+			cl = p;
+		}
+	}
+	if (cl)
+	cl->clk->flags |= CLKFLAG_IGNORE;
+}
+
+int __init clk_ignore_list_init(void)
+{
+	clk_ignore_list_add("gcc_blsp1_uart2_apps_clk");
+	return 0;
+}
+module_init(clk_ignore_list_init);
+
+static int clock_blocked_print_one(struct clk *c)
+{
+        if (!c || !c->prepare_count)
+                return 0;
+
+        if (is_xo_src(c)) {
+                if (c->vdd_class)
+                        pr_info("%s not off block xo vdig level %ld, parent clk: %s\n",
+                                c->dbg_name, c->vdd_class->cur_level,
+                                clk_get_parent(c)?clk_get_parent(c)->dbg_name:"none");
+                else
+                        pr_info("%s not off block xo vdig level (none), parent clk: %s\n",
+                                c->dbg_name,
+                                clk_get_parent(c)?clk_get_parent(c)->dbg_name:"none");
+
+                return 1;
+        }
+        return 0;
+}
+
+void clock_blocked_print(void)
+{
+        struct clk_table *table;
+        unsigned long flags;
+        int i, cnt = 0;
+
+        spin_lock_irqsave(&clk_blocked_lock, flags);
+        list_for_each_entry(table, &clk_blocked_list, node) {
+                for (i = 0; i < table->num_clocks; i++)
+                        cnt += clock_blocked_print_one(table->clocks[i].clk);
+        }
+        spin_unlock_irqrestore(&clk_blocked_lock, flags);
+
+        if (cnt)
+                pr_info("%d clks are on that block xo or vddmin\n", cnt);
+
+}
+#endif
